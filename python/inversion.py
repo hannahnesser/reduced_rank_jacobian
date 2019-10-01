@@ -5,6 +5,7 @@ import numpy as np
 from numpy.linalg import inv, norm #,eigh
 from scipy.sparse import diags, identity
 from scipy.linalg import eigh
+import pandas as pd
 from tqdm import tqdm
 import copy
 
@@ -584,7 +585,7 @@ class ReducedRankJacobian(ReducedRankInversion):
         sv_sig = sv_sig.groupby(by='sv').mean().reset_index()
         sv_sig = sv_sig.sort_values(by='sig')
         sv_sig = sv_sig[sv_sig['sv'] > 0]
-        p = np.zeros((len(state_vector), len(sv_elements)))
+        p = np.zeros((len(state_vector), sv_sig.shape[0]))
         for i, sv in enumerate(sv_sig['sv']):
             index = np.argwhere(state_vector == sv).reshape(-1,)
             p[index, i] = 0.5
@@ -659,7 +660,8 @@ class ReducedRankJacobian(ReducedRankInversion):
                                                    n_cells, n_cluster_size)
 
         # And now get the perturbation matrix
-        perturbation_matrix = self.calculate_perturbation_matrix(state_vector)
+        perturbation_matrix = self.calculate_perturbation_matrix(state_vector, 
+                                                                 significance)
         
         # We calculate the number of model runs.
         new.model_runs += len(np.unique(state_vector)[1:])
