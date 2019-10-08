@@ -21,6 +21,10 @@ rcParams['font.family'] = 'serif'
 rcParams['font.size'] = 14
 rcParams['text.usetex'] = True
 
+def color(k, cmap='inferno', lut=10):
+    c = plt.cm.get_cmap(cmap, lut=lut)
+    return colors.to_hex(c(k))
+
 class Inversion:
     def __init__(self, k, xa, sa_vec, y, y_base, so_vec):
         # Check that the data are all the same types
@@ -243,20 +247,41 @@ class ReducedRankInversion(Inversion):
     ### REDUCED RANK INVERSION FUNCTIONS ###
     ########################################
 
+    def get_rank(self, pct_of_info, rank):
+        if sum(x is not None for x in [pct_of_info, rank]) > 1:
+            print('pct_of_info = ', pct_of_info)
+            print('rank = ', rank)
+            raise AttributeError('Conflicting arguments provided to determine rank.')
+        elif sum(x is not None for x in [pct_of_info, rank]) == 0:
+            raise AttributeError('Must provide one of pct_of_info or rank.')
+        elif pct_of_info is not None:
+            rank = np.argwhere(self.evals < (1 - pct_of_info))[0][0]
+            print('Calculated rank from rank threshold: %d' % rank)
+        elif rank is not None:
+            print('Using defined rank: %d' % rank)
+        return rank
+
     def pph(self):
         # Calculate the prior pre-conditioned Hessian
         sa_sqrt = diags(self.sa_vec**0.5)
-        pph_m  = (sa_sqrt @ self.k.T) \
-                 @ diags(1/self.so_vec) @ (sa_sqrt @ self.k.T).T
+        so_inv = diags(1/self.so_vec)
+        pph_m  = sa_sqrt @ self.k.T \
+                 @ so_inv @ self.k @ sa_sqrt
         print('Calculated PPH.')
         return pph_m
 
     def edecomp(self):
+        # Calculate pph and require that it be symmetric
+        pph = self.pph()
+        assert np.allclose(pph, pph.T, rtol=1e-5), \
+               'The prior pre-conditioned Hessian is not symmetric.'
+
         # Perform the eigendecomposition of the prior 
         # pre-conditioned Hessian
         # We return the evals of the projection, not of the 
         # prior pre-conditioned Hessian.
-        evals, evecs = eigh(self.pph())
+
+        evals, evecs = eigh(pph)
         print('Eigendecomposition complete.')
         
         # Sort evals and evecs by eval
@@ -289,18 +314,7 @@ class ReducedRankInversion(Inversion):
             self.edecomp()
 
         # Subset the evecs according to the rank provided.
-        if sum(x is not None for x in [pct_of_info, rank]) > 1:
-            print('pct_of_info = ', pct_of_info)
-            print('rank = ', rank)
-            raise AttributeError('Conflicting arguments provided to determine rank.')
-        elif sum(x is not None for x in [pct_of_info, rank]) == 0:
-            raise AttributeError('Must provide one of pct_of_info or rank.')
-        elif pct_of_info is not None:
-            rank = np.argwhere(self.evals < (1 - pct_of_info))[0][0]
-            print('Calculated rank from rank threshold: %d' % rank)
-        elif rank is not None:
-            print('Using defined rank: %d' % rank)
-
+        rank = self.get_rank(pct_of_info=pct_of_info, rank=rank)
         evecs_subset = self.evecs[:,:rank]
 
         # Calculate the prolongation and reduction operators and
@@ -311,7 +325,66 @@ class ReducedRankInversion(Inversion):
 
         return rank, prolongation, reduction, projection
 
+    def shat_proj_sum(self, rank):
+        sum_mat = np.zeros((self.nstate, self.nstate))
+        for i in range(rank):
+            l_i = self.evals[i]
+            v_i = self.evecs[:,i].reshape(-1,1)
+            sum_mat += (v_i @ v_i.T)/(1 + l_i)
+        return sum_mat
+
+    # Need to add in cost function and other information here
+    def solve_inversion_proj(self, pct_of_info=None, rank=None):
+        # Conduct the eigendecomposition of the prior pre-conditioned
+        # Hessian
+        if (self.evals is None) or (self.evecs is None):
+            print('Performing eigendecomposition.')
+            self.edecomp()
+
+        # Subset the evecs according to the rank provided.
+        rank = self.get_rank(pct_of_info=pct_of_info, rank=rank)
+
+        # Calculate a few quantities that will be useful
+        sa_sqrt = diags(self.sa_vec**0.5)
+        sa_sqrt_inv = diags(1/self.sa_vec**0.5)
+        so_vec = self.rf*self.so_vec
+        so_sqrt_inv = diags(1/so_vec**0.5)
+
+        # Subset evecs and evals
+        vk = self.evecs[:, :rank]
+        wk = so_sqrt_inv @ self.k @ sa_sqrt @ vk
+        lk = self.evals[:rank].reshape((1, -1))
+
+        # Calculate the solutions
+        self.xhat_proj = (np.asarray(sa_sqrt 
+                                    @ (((lk**0.5/(1+lk))*vk) @ wk.T) 
+                                    @ so_sqrt_inv
+                                    @ self.obs_mod_diff(self.xa))
+                         + self.xa)
+        self.shat_proj = np.asarray(sa_sqrt
+                                    @ ((vk/(1+lk)) @ vk.T) 
+                                    @ sa_sqrt)
+        # self.shat_proj = sa_sqrt @ self.shat_proj_sum(rank) @ sa_sqrt
+        self.a_proj = np.asarray(sa_sqrt 
+                                 @ (((lk/(1+lk))*vk) @ vk.T)
+                                 @ sa_sqrt_inv)
+        print('Projected Inversion complete.')
+
+    def solve_inversion_kproj(self, pct_of_info=None, rank=None):
+        # Get the projected solution
+        self.solve_inversion_proj(pct_of_info=pct_of_info, rank=rank)
+
+        # Calculate a few quantities that will be useful
+        sa = diags(self.sa_vec)
+
+        # Calculate the solutions
+        self.xhat_kproj = self.xhat_proj
+        self.shat_kproj = np.asarray((identity(self.nstate) - self.a_proj) @ sa)
+        self.a_kproj = self.a_proj
+        print('Projected Forward Model Inversion Complete.')
+
 ##### finish converting reduced rank code over ######
+
 
     ##########################
     ########## ERROR #########
@@ -390,7 +463,7 @@ class ReducedRankInversion(Inversion):
         if type(compare_data) == dict:
            # We need to know how many data sets were passed
             n = len(compare_data)
-            cmap = kw.pop('cmap', plt.cm.get_cmap('inferno', lut=n))
+            cmap = kw.pop('cmap', 'inferno')
             cbar_ticklabels = kw.pop('cbar_ticklabels', 
                                      list(compare_data.keys()))
             cbar_title = kw.pop('cbar_title', '')
@@ -399,13 +472,15 @@ class ReducedRankInversion(Inversion):
             count = 0
             for k, ydata in compare_data.items():
                 ax.scatter(xdata, ydata, 
-                           alpha=0.5, s=5, c=cmap(count))
+                           alpha=0.5, s=5, c=color(count, cmap=cmap, lut=n))
                 count += 1
 
             # Color bar
             cax = fig.add_axes([0.95, 0.25/2, 0.01, 0.75])
             norm = colors.Normalize(vmin=0, vmax=n)
-            cb = colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+            cb = colorbar.ColorbarBase(cax, 
+                                       cmap=plt.cm.get_cmap(cmap, lut=n), 
+                                       norm=norm)
             cb.set_ticks(0.5 + np.arange(0,n+1))
             cb.set_ticklabels(cbar_ticklabels)
             cb.set_label(cbar_title, fontsize=16)
@@ -689,71 +764,6 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         return new
 
-    # def update_jacobian_ag(self, forward_model, clusters_plot,
-    #                     pct_of_info=None,
-    #                     n_cells=[100, 200],
-    #                     n_cluster_size=[1, 2],
-    #                     k_base=None):#, #threshold=0,
-    #                     # perturbation_factor=0.5):
-
-    #     # We start by creating a new instance of the class. This
-    #     # is where 
-    #     new = ReducedRankJacobian(k=copy.deepcopy(self.k),
-    #                               xa=copy.deepcopy(self.xa),
-    #                               sa_vec=copy.deepcopy(self.sa_vec),
-    #                               y=copy.deepcopy(self.y),
-    #                               y_base=copy.deepcopy(self.y_base),
-    #                               so_vec=copy.deepcopy(self.so_vec))
-    #     new.model_runs = copy.deepcopy(self.model_runs)
-    #     new.rf = copy.deepcopy(self.rf)
-
-    #     # Retrieve the prolongation operator associated with
-    #     # this instance of the Jacobian for the rank specified
-    #     # by the function call. These are the eigenvectors
-    #     # that we will perturb.
-    #     # Calculate the weight of each full element space as sum
-    #     # of squares
-    #     new.rank, significance = self.calculate_significance(pct_of_info)
-
-    #     # If previously optimized, set significance to 0
-    #     if len(self.perturbed_cells) > 0:
-    #         print('Ignoring previously optimized grid cells.')
-    #         significance[self.perturbed_cells] = 0
-
-    #     # We need the new state vector first. This gives us the
-    #     # clusterings of the base resolution state vector
-    #     # elements as dictated by n_cells and n_cluster_size.
-    #     state_vector = self.aggregate_cells_kmeans(clusters_plot, significance, 
-    #                                                n_cells, n_cluster_size)
-        
-    #     # This gives us the number of model runs.
-    #     new.model_runs += len(np.unique(state_vector)[1:])
-
-    #     # Find the individual grid cells that are perturbed
-    #     counts = np.unique(state_vector, return_counts=True)
-    #     new_perturbed_cells = counts[0][counts[1] == 1]
-    #     new.perturbed_cells = np.append(self.perturbed_cells,
-    #                                     new_perturbed_cells).astype(int)
-
-    #     # Create space for the new Jacobian
-    #     if k_base is None:
-    #         k_new = copy.deepcopy(self.k)
-    #         # k_new = np.zeros(self.k.shape)
-    #     else:
-    #         k_new = k_base
-
-    #     # Now update the Jacobian
-    #     k_new = self.calculate_k(forward_model, state_vector, k_new)
-    #     new.k = k_new
-
-    #     # And do the eigendecomposition
-    #     new.edecomp()
-
-    #     # And solve the inversion
-    #     new.solve_inversion()
-
-    #     return new
-
     # Rewrite to take any prolongation matrix?
     def update_jacobian_br(self, forward_model,
                            pct_of_info=None, rank=None, prolongation=None,
@@ -792,10 +802,6 @@ class ReducedRankJacobian(ReducedRankInversion):
         # Broyden's theorem.
         new.broyden(forward_model, 
                     perturbation_matrix=prolongation)
-        # for column in prolongation.T:
-        #     col = column.reshape(-1, 1)
-        #     new.k += ((forward_model - new.k) @ col @ col.T)/ \
-        #              np.linalg.norm(col)**2
 
         # Update the value of c in the new instance
         new.calculate_c()
@@ -810,19 +816,6 @@ class ReducedRankJacobian(ReducedRankInversion):
 
 
     def full_analysis(self, true, clusters_plot):
-        # n_model_runs = (np.array(n_cells)/np.array(n_cluster_size)).sum()
-        # update = self.update_jacobian(forward_model=true.k,
-        #                               clusters_plot=clusters_plot, 
-        #                               pct_of_info=pct_of_info,
-        #                               n_cells=n_cells,
-        #                               n_cluster_size=n_cluster_size)
-        # update.edecomp()
-        # # IS THE RANK HERE CORRECT?
-        # rank, prolong, reduct, project = true.projection(rank=n_model_runs)
-        # true.k_reduced = true.k @ prolong
-        # rank, prolong, reduct, project = update.projection(rank=n_model_runs)
-        # update.k_reduced = update.k @ prolong
-
         # Compare full and reduced dimension jacobians
         fig1, ax = plt.subplots(1, 3, figsize=(33, 10))
         k_label = r'$\frac{\vert\vert K_{true} - K_{update} \vert\vert}{\vert\vert K_{true} \vert\vert}$'
@@ -899,108 +892,3 @@ class ReducedRankJacobian(ReducedRankInversion):
         # We use the two norm because we want to look at how close
         # the two are and not worry so much about outliers.
         true.plot_evec_comparison(self)
-
-
-    # def update_jacobian(self, forward_model, clusters_plot,
-    #                     pct_of_info=None,
-    #                     k_base=None):#, #threshold=0,
-    #                     # perturbation_factor=0.5):
-
-    #     # We start by creating a new instance of the class. This
-    #     # is where 
-    #     new = ReducedRankJacobian(k=self.k,
-    #                               xa=self.xa,
-    #                               sa_vec=self.sa_vec,
-    #                               y=self.y,
-    #                               y_base=self.y_base,
-    #                               so_vec=self.so_vec)
-
-    #     # Retrieve the prolongation operator associated with
-    #     # this instance of the Jacobian for the rank specified
-    #     # by the function call. These are the eigenvectors
-    #     # that we will perturb.
-    #     # Calculate the weight of each full element space as sum
-    #     # of squares
-    #     new.rank, significance = self.calculate_significance(pct_of_info)
-
-    #     # If previously optimized, set significance to 0
-    #     if len(self.perturbed_cells) > 0:
-    #         print('Ignoring previously optimized grid cells.')
-    #         significance[self.perturbed_cells] = 0
-
-    #     # Find the n=rank most significant grid cells. These are the
-    #     # grid cells we will perturb.
-    #     perturbation_idx = significance.argsort()[::-1][:new.rank]
-    #     new.perturbed_cells = np.append(self.perturbed_cells, 
-    #                                     perturbation_idx).astype(int)
-    #     new.model_runs = len(new.perturbed_cells)
-
-    #     # Create space for the new Jacobian
-    #     if k_base is None:
-    #         k_new = self.k
-    #         # k_new = np.zeros(self.k.shape)
-    #     else:
-    #         k_new = k_base
-
-    #     # And we will simply retrieve the forward model for those
-    #     # columns (this is equivalent). However, we want to take 
-    #     # advantage of proximity effects--if the perturbed state 
-    #     # element is close to other, unperturbed elements, we would
-    #     # rather use some fraction of the model response from the 
-    #     # nearby perturbation to estimate its model response
-    #     # (wow rewrite this terrible)
-    #     for sv in perturbation_idx:
-    #         # Get the Jacobian for that state vector element
-    #         perturbation = forward_model[:, sv].reshape(-1, 1)
-
-    #         # Get the indices of the neighboring grid cells
-    #         idx = self.get_neighboring_cells(sv, clusters_plot)
-
-    #         # Check if we are otherwise optimizing any of these grid
-    #         # cells. Specifically, find the cells that are in
-    #         # neighbor_idx but not in perturbation_idx nor that were
-    #         # previously optimized.
-    #         idx = np.setdiff1d(idx, new.perturbed_cells, 
-    #                            assume_unique=True)
-
-    #         # Add sv back in.
-    #         idx = np.append(idx, sv)
-
-    #         # And then update k_new
-    #         k_new[:,idx] = np.tile(perturbation, [1, len(idx)])
-
-    #     new.k = k_new
-    #     return new
-
-        # # Apply the forward model (in this case the true Jacobian)
-        # # to the perturbations, given by the prolongation matrix.
-        # k_reduced = forward_model @ prolongation
-
-        # # We now solve for the updated Jacobian by minimizing
-        # # the derivative of the reduced-rank Jacobian
-        # # at every entry
-        # k_new = np.zeros(self.k.shape)
-        # # pbar = tqdm(total=len(k_new.flatten())/5000)
-        # # count = 0
-        # for i in range(k_new.shape[0]):
-        #     for j in range(k_new.shape[1]):
-        #         #     pbar.update(1)
-        #         numerator = (k_reduced[i,:]*prolongation[j,:]).sum()
-        #         denominator = (prolongation[j,:]**2).sum()
-
-        #         # If the denominator is below some threshold, it signals
-        #         # that there is insufficient information content. We 
-        #         # opt only to optimize the Jacobian value in cases where 
-        #         # information content is above that threshold.
-        #         # (The denominator is the sum of squares of the row of the 
-        #         # prolongation operator in question. It is a measure
-        #         # of the total influence of the reduced space on an
-        #         # individual element of the full state space. 
-        #         # If small, then that element is not spanned by the reduced
-        #         # space elements.)
-        #         # By default, the threshold is 0.
-        #         if np.sqrt(denominator) > threshold:
-        #             k_new[i,j] = numerator/denominator
-
-        # return k_new
-

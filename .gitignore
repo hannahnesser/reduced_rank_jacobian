@@ -1,2 +1,11 @@
 # Don't track content of these folders
 archive/
+20191007/
+
+# Don't track these large files
+pph.csv
+input/est0_evecs.csv
+input/true_evecs.csv
+input/est0_evals.csv
+input/true_evals.csv
+input/edecomp.zip
