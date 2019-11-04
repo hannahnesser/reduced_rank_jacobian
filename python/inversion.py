@@ -809,7 +809,8 @@ class ReducedRankJacobian(ReducedRankInversion):
     # Rewrite to take any prolongation matrix?
     def update_jacobian_br(self, forward_model,
                            pct_of_info=None, rank=None, prolongation=None,
-                           k_base=None):
+                           k_base=None,
+                           convergence_threshold=1e-5):
         # We start by creating a new instance of the class.
         if k_base is None:
             k_base = copy.deepcopy(self.k)
@@ -842,14 +843,24 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         # We update the Jacobian perturbation-by-perturbation following
         # Broyden's theorem.
-        n_reps = 2000
-        for i in range (n_reps):
-            if i % 10 == 0:
+        max_reps = 2*self.nstate
+        count = 0
+        converged = False
+        while ~converged:
+            if count % 10 == 0:
                 err = (np.linalg.norm(forward_model - new.k)
                        /np.linalg.norm(forward_model))*100
                 print('%03d/%d Broyden cycles (RE = %.2f)' % (i, n_reps, err))
+
+            k_prev = copy.deepcopy(new.k)
             new.broyden(forward_model, 
                         perturbation_matrix=prolongation)
+            count += 1
+            k_diff = np.linalg.norm(new.k - k_prev)
+            if (k_diff < convergence_threshold) or (count >= max_reps):
+                converged = True
+
+
 
         # Update the value of c in the new instance
         new.calculate_c()
