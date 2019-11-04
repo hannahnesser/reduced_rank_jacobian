@@ -415,8 +415,6 @@ class ReducedRankInversion(Inversion):
         self.xhat_fr = self.shat_kproj @ self.k.T @ so_inv @ d
         print('Full Rank Approximation Complete.')
 
-##### finish converting reduced rank code over ######
-
 
     ##########################
     ########## ERROR #########
@@ -858,9 +856,8 @@ class ReducedRankJacobian(ReducedRankInversion):
             count += 1
             k_diff = np.linalg.norm(new.k - k_prev)
             if (k_diff < convergence_threshold) or (count >= max_reps):
+                print('CONVERGED IN %D ITERATIONS.' % count)
                 converged = True
-
-
 
         # Update the value of c in the new instance
         new.calculate_c()
