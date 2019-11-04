@@ -5,7 +5,6 @@ sys.path.append('.')
 import jacobian as j
 import inv_plot
 
-import yaml
 import xarray as xr
 import pandas as pd
 import numpy as np
@@ -16,13 +15,16 @@ rcParams['font.family'] = 'serif'
 rcParams['font.size'] = 14
 colors = plt.cm.get_cmap('inferno', lut=9)
 
+
 input_dir = sys.argv[1]
 jac_str = str(sys.argv[2])
 resolution = str(sys.argv[3])
 model_emissions = sys.argv[4]
 sat_obs = sys.argv[5]
 
-if not set([jac_str + '_est.nc', 'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(listdir(input_dir)):
+if not set([jac_str + '_est.nc', 
+            jac_str + '_est_sparse.nc',
+            'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(listdir(input_dir)):
     print('Retrieving observational data and estimated Jacobian.')
 
     clusters = xr.open_dataarray(join(input_dir, 'clusters_' + resolution + '.nc'))
@@ -81,7 +83,8 @@ if not set([jac_str + '_est.nc', 'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(lis
     y['model'].to_netcdf(join(input_dir, 'y_base.nc'))
     y['GOSAT'].to_netcdf(join(input_dir, 'y.nc'))
 
-    if 'k_est.nc' not in listdir(input_dir):
+    if (('k_est.nc' not in listdir(input_dir))
+        or ('k_est_sparse.nc' not in listdir(input_dir))):
         print('Building estimated Jacobian based on mass balance approach.')
         # # Calculate the change above each grid cell
         # get moles air
@@ -138,6 +141,7 @@ if not set([jac_str + '_est.nc', 'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(lis
 
         # for i in a.coords['NSV'].values:
         y_short = obs[['Nobs', 'NSV']]
+        y_short_sparse = obs[['Nobs', 'NSV']]
         for i in emis_pert.coords['NSV'].values:
             pert = emis_pert.where(emis_pert.coords['NSV'] == i)
             pert_loc = emis_pert.where(emis_pert.coords['NSV'] == i, drop=True)
@@ -152,8 +156,6 @@ if not set([jac_str + '_est.nc', 'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(lis
             cond2 = cond2.where(cond3, drop=True).astype(bool)
             cond1 = cond1.where(cond3, drop=True).astype(bool)
             cond0 = cond0.where(cond3, drop=True).astype(bool)
-
-            # print(cond1)
             
             pert_nb = emis_pert.where(cond3, drop=True)
 
@@ -179,6 +181,15 @@ if not set([jac_str + '_est.nc', 'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(lis
             y_short = y_short.merge(pert_nb, on=['NSV'], how='left')
             y_short[i] = y_short[i].fillna(0)
 
+            cond0 = condition(pert, pert_loc, resolution, 0)
+            pert_nb = emis_pert.where(cond0, drop=True)
+            pert_nb['EmisCH4_Total'] = pert_loc['EmisCH4_Total'].values[0]
+            pert_nb[i] = 1e9*Mair*pert_nb['EmisCH4_Total']*g/(U*W*P)
+            pert_nb = pert_nb[i].to_dataframe().reset_index()
+            pert_nb = pert_nb.drop(columns=['lat', 'lon'])
+            y_short_sparse = y_short_sparse.merge(pert_nb, on=['NSV'], how='left')
+            y_short_sparse[i] = y_short_sparse[i].fillna(0)
+
         k_est = y_short.drop(columns=['NSV'])/0.5
         k_est = k_est.set_index('Nobs')
         k_est = k_est.unstack().reset_index()
@@ -188,12 +199,21 @@ if not set([jac_str + '_est.nc', 'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(lis
         k_est = k_est['k']
         k_est.to_netcdf(join(input_dir, jac_str + '_est.nc'))
 
+        k_est_sparse = y_short_sparse.drop(columns=['NSV'])/0.5
+        k_est_sparse = k_est_sparse.set_index('Nobs')
+        k_est_sparse = k_est_sparse.unstack().reset_index()
+        k_est_sparse = k_est_sparse.rename(columns={'level_0' : 'NSV',
+                                       0 : 'k'})
+        k_est_sparse = k_est_sparse.set_index(['Nobs', 'NSV']).to_xarray()
+        k_est_sparse = k_est_sparse['k']
+        k_est_sparse.to_netcdf(join(input_dir, jac_str + '_est_sparse.nc'))
+
         # We can check our results by plotting the regridded Jacobian against
         # the true jacobian
         k_true = xr.open_dataarray(join(input_dir, 'k_true.nc'))
         fig, ax = plt.subplots(figsize=(10,10))
         ax.set_facecolor('0.98')
-        ax.scatter(k_true.values, k_est.values, alpha=0.5, s=5, c=colors(3))
+        ax.scatter(k_true.values, k_est.values, alpha=0.5, s=5, c=np.asarray(colors(3)).reshape(1,-1))
         ax.plot((-2,20), (-2,20), c='0.5', lw=2, ls=':', zorder=0)
         ax.set_ylim(-2,20)
         ax.set_xlim(-2,20)

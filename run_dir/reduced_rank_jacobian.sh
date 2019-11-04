@@ -16,13 +16,13 @@ mkdir -p python
 cp -r ../python/* ./python/
 
 # Build and save the clusters in the run dir.
-python -W ignore python/clusters.py $INPUT_DIR $CLUSTERS_IN $RESOLUTION
+python python/clusters.py $INPUT_DIR $CLUSTERS_IN $RESOLUTION
 
 # Make the true Jacobian
-python -W ignore python/true_jacobian.py $INPUT_DIR $JACOBIAN_STR $RESOLUTION $MODEL_RESPONSE $SAT_OBS
+python python/true_jacobian.py $INPUT_DIR $JACOBIAN_STR $RESOLUTION $MODEL_RESPONSE $SAT_OBS
 
 # Make the observational fields and estimated Jacobian
-python -W ignore python/est_jacobian_and_obs.py $INPUT_DIR $JACOBIAN_STR $RESOLUTION $MODEL_EMISSIONS $SAT_OBS
+python python/est_jacobian_and_obs.py $INPUT_DIR $JACOBIAN_STR $RESOLUTION $MODEL_EMISSIONS $SAT_OBS
 
 # Make the prior fields
-python -W ignore python/prior.py $INPUT_DIR $PRIOR_ERROR $RESOLUTION
+python python/prior.py $INPUT_DIR $PRIOR_ERROR $RESOLUTION
