@@ -21,22 +21,22 @@ import cartopy
 c = plt.cm.get_cmap('inferno', lut=10)
 
 # Import clusters
-clusters = xr.open_dataarray('input/clusters_1x125.nc')
-clusters_plot = xr.open_dataarray('input/clusters_1x125_plot.nc')
+clusters = xr.open_dataarray('../input/clusters_1x125.nc')
+clusters_plot = xr.open_dataarray('../input/clusters_1x125_plot.nc')
 
 # Load estimated and true Jacobian
-k_est = xr.open_dataarray('input/k_est.nc')
-k_est_sparse = xr.open_dataarray('input/k_est_sparse.nc')
-k_true = xr.open_dataarray('input/k_true.nc')
+k_est = xr.open_dataarray('../input/k_est.nc')
+k_est_sparse = xr.open_dataarray('../input/k_est_sparse.nc')
+k_true = xr.open_dataarray('../input/k_true.nc')
 
 # Load prior and error
-xa = xr.open_dataarray('input/xa.nc')
-sa_vec = xr.open_dataarray('input/sa_vec.nc')
+xa = xr.open_dataarray('../input/xa.nc')
+sa_vec = xr.open_dataarray('../input/sa_vec.nc')
 
 # Load observations and error
-y = xr.open_dataarray('input/y.nc')
-y_base = xr.open_dataarray('input/y_base.nc')
-so_vec = xr.open_dataarray('input/so_vec.nc')
+y = xr.open_dataarray('../input/y.nc')
+y_base = xr.open_dataarray('../input/y_base.nc')
+so_vec = xr.open_dataarray('../input/so_vec.nc')
 
 ###############################################################
 ##################           TRUTH          ###################
