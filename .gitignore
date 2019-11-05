@@ -3,6 +3,7 @@ archive/
 20191007/
 
 # Don't track these large files
+20191007.zip
 pph.csv
 input/est0_evecs.csv
 input/true_evecs.csv
