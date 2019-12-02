@@ -27,6 +27,13 @@ def color(k, cmap='inferno', lut=10):
 
 class Inversion:
     def __init__(self, k, xa, sa_vec, y, y_base, so_vec):
+        """
+        k: obtained using the output from parallel model runs conducted using the inversion module in GC
+        xa: either our prior emissions or a constant vector of all ones
+        sa: given by prior errors added in quadrature
+        y: processed observations (we have to be careful here and everywhere with TROPOMI)
+        so: generally built using the residual error method of Heald et al. (2004). I have yet to incorporate this into my class because I'm currently using Bram's inputs from his global inversion.
+        """
         # Check that the data are all the same types
         assert all(isinstance(z, np.ndarray) 
                    for z in [k, xa, sa_vec, y, so_vec]), \
