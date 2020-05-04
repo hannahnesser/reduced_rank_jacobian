@@ -1,0 +1,456 @@
+Clusters already exist.
+True Jacobian already exists.
+Retrieving observational data and estimated Jacobian.
+Building estimated Jacobian based on mass balance approach.
+Prior error and prior already exist.
+Forcing negative values of the Jacobian to 0.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -2.91e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38090.87
+     Negative cells: -97
+Calculating the averaging kernel.
+     DOFS: 80.66
+Calculating updated modeled observations.
+Inversion complete.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -1.34e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 52179.89
+     Negative cells: -144
+Calculating the averaging kernel.
+     DOFS: 64.56
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 50
+Using defined rank: 50
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 6 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -6.63e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 43974.94
+     Negative cells: -95
+Calculating the averaging kernel.
+     DOFS: 24.86
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 100
+Using defined rank: 100
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -6.04e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 40888.49
+     Negative cells: -97
+Calculating the averaging kernel.
+     DOFS: 37.83
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 150
+Using defined rank: 150
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -4.79e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 39906.58
+     Negative cells: -104
+Calculating the averaging kernel.
+     DOFS: 44.77
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 200
+Using defined rank: 200
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -5.43e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 39627.23
+     Negative cells: -103
+Calculating the averaging kernel.
+     DOFS: 49.23
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 250
+Using defined rank: 250
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -2.92e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 39318.15
+     Negative cells: -103
+Calculating the averaging kernel.
+     DOFS: 52.68
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 300
+Using defined rank: 300
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -4.87e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 39165.91
+     Negative cells: -103
+Calculating the averaging kernel.
+     DOFS: 55.29
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 350
+Using defined rank: 350
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -5.13e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38980.78
+     Negative cells: -101
+Calculating the averaging kernel.
+     DOFS: 57.26
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 400
+Using defined rank: 400
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -2.97e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38878.78
+     Negative cells: -102
+Calculating the averaging kernel.
+     DOFS: 58.67
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 450
+Using defined rank: 450
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -5.46e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38791.46
+     Negative cells: -100
+Calculating the averaging kernel.
+     DOFS: 59.85
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 500
+Using defined rank: 500
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -4.80e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38708.88
+     Negative cells: -97
+Calculating the averaging kernel.
+     DOFS: 60.98
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 550
+Using defined rank: 550
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -1.57e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38652.34
+     Negative cells: -97
+Calculating the averaging kernel.
+     DOFS: 61.73
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 600
+Using defined rank: 600
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -3.82e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38638.13
+     Negative cells: -96
+Calculating the averaging kernel.
+     DOFS: 62.11
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 700
+Using defined rank: 700
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -5.64e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38601.80
+     Negative cells: -94
+Calculating the averaging kernel.
+     DOFS: 62.75
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 800
+Using defined rank: 800
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -6.06e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38592.50
+     Negative cells: -94
+Calculating the averaging kernel.
+     DOFS: 62.99
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 900
+Using defined rank: 900
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 8 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -3.13e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38523.72
+     Negative cells: -92
+Calculating the averaging kernel.
+     DOFS: 65.39
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 1000
+Using defined rank: 1000
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 9 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -3.25e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38432.80
+     Negative cells: -88
+Calculating the averaging kernel.
+     DOFS: 68.51
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 1200
+Using defined rank: 1200
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 9 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -2.81e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38355.19
+     Negative cells: -89
+Calculating the averaging kernel.
+     DOFS: 71.40
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 1400
+Using defined rank: 1400
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 9 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -3.25e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38345.05
+     Negative cells: -89
+Calculating the averaging kernel.
+     DOFS: 71.70
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 1600
+Using defined rank: 1600
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 9 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -1.82e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38338.17
+     Negative cells: -89
+Calculating the averaging kernel.
+     DOFS: 71.90
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 1800
+Using defined rank: 1800
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 9 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -3.65e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38281.16
+     Negative cells: -91
+Calculating the averaging kernel.
+     DOFS: 73.74
+Calculating updated modeled observations.
+Inversion complete.
+
+Updating Jacobian for Rank 2000
+Using defined rank: 2000
+000 Broyden cycles (RE = 100.00)
+CONVERGED IN 10 ITERATIONS.
+Calculated PPH.
+Eigendecomposition complete.
+Negative eigenvalues. Maximum negative value is -2.81e-15. Setting negative eigenvalues to zero.
+Saving eigenvalues and eigenvectors to instance.
+Calculating the cost function at the prior mean.
+     Cost function: 59517.59
+Calculating the posterior error.
+Calculating the posterior mean.
+Calculating the cost function at the posterior mean.
+     Cost function: 38130.15
+     Negative cells: -95
+Calculating the averaging kernel.
+     DOFS: 78.96
+Calculating updated modeled observations.
+Inversion complete.

@@ -26,3 +26,6 @@ python python/est_jacobian_and_obs.py $INPUT_DIR $JACOBIAN_STR $RESOLUTION $MODE
 
 # Make the prior fields
 python python/prior.py $INPUT_DIR $PRIOR_ERROR $RESOLUTION
+
+# Runnn
+python k_update_test.py
