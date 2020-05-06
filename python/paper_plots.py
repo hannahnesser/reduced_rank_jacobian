@@ -21,6 +21,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy
+import format_plots as fp
 
 c = plt.cm.get_cmap('inferno', lut=10)
 
@@ -142,85 +143,151 @@ est0.rf = RF
 est0.edecomp()
 est0.solve_inversion()
 
-###################################
-### FIGURE : GOSAT OBSERVATIONS ###
-###################################
-# fig01, ax = plt.subplots(figsize=(8*SCALE/1.25,6*SCALE/1.25),
-#                          subplot_kw={'projection' :
-#                                      ccrs.PlateCarree()})
+#####################################
+### FIGURE 01: GOSAT OBSERVATIONS ###
+#####################################
+fig01, ax = fp.make_axes(maps=True, lats=obs['lat'], lons=obs['lon'])
 
-# col = ax.scatter(obs['lon'], obs['lat'], c=obs['GOSAT'],
-#                cmap='inferno', vmin=1700, vmax=1800,
-#                s=100)
+col = ax.scatter(obs['lon'], obs['lat'], c=obs['GOSAT'],
+               cmap='inferno', vmin=1700, vmax=1800,
+               s=100)
 
-# ax.set_title(r'GOSAT XCH$_4$ (July 2009)', y=TITLE_LOC,
-#              fontsize=(BASEFONT+10)*SCALE)
-# ax.add_feature(cartopy.feature.OCEAN, facecolor='0.98')
-# ax.add_feature(cartopy.feature.LAND, facecolor='0.98')
-# ax.coastlines(color='grey')
+ax.set_title(r'GOSAT XCH$_4$ (July 2009)', y=TITLE_LOC,
+             fontsize=(BASEFONT+10)*SCALE)
+ax.add_feature(cartopy.feature.OCEAN, facecolor='0.98')
+ax.add_feature(cartopy.feature.LAND, facecolor='0.98')
+ax.coastlines(color='grey')
 
-# gl = ax.gridlines(linestyle=':', draw_labels=True, color='grey')
-# gl.xlabel_style = {'fontsize' : (BASEFONT-5)*SCALE}
-# gl.ylabel_style = {'fontsize' : (BASEFONT-5)*SCALE}
+gl = ax.gridlines(linestyle=':', draw_labels=True, color='grey')
+gl.xlabel_style = {'fontsize' : (BASEFONT-5)*SCALE}
+gl.ylabel_style = {'fontsize' : (BASEFONT-5)*SCALE}
 
-# cax = fig01.add_axes([ax.get_position().x1 + 0.05,
-#                       ax.get_position().y0,
-#                       0.005*SCALE,
-#                       ax.get_position().height])
-# cbar = plt.colorbar(col, cax=cax)
-# cbar.set_label(label='XCH4', fontsize=(BASEFONT+5)*SCALE,
-#                labelpad=CBAR_LABEL_PAD)
-# cbar.ax.tick_params(labelsize=BASEFONT*SCALE)
+cax = fig01.add_axes([ax.get_position().x1 + 0.05,
+                      ax.get_position().y0,
+                      0.005*SCALE,
+                      ax.get_position().height])
+cbar = plt.colorbar(col, cax=cax)
+cbar.set_label(label='XCH4', fontsize=(BASEFONT+5)*SCALE,
+               labelpad=CBAR_LABEL_PAD)
+cbar.ax.tick_params(labelsize=BASEFONT*SCALE)
 
-# # Save plot
-# fig01.savefig(join(plots, 'fig01_gosat_obs.png'),
-#              bbox_inches='tight')
-# print('Saved fig01_gosat_obs.png')
+# Save plot
+fig01.savefig(join(plots, 'fig01_gosat_obs.png'),
+             bbox_inches='tight')
+print('Saved fig01_gosat_obs.png')
 
-##########################################
-### FIGURE : GOSAT OBSERVATION DENSITY ###
-##########################################
-# lat_res = np.diff(clusters_plot.lat)[0]
-# lat_edges = np.append(clusters_plot.lat - lat_res/2,
-#                       clusters_plot.lat[-1] + lat_res/2)
+############################################
+### FIGURE 02: GOSAT OBSERVATION DENSITY ###
+############################################
+lat_res = np.diff(clusters_plot.lat)[0]
+lat_edges = np.append(clusters_plot.lat - lat_res/2,
+                      clusters_plot.lat[-1] + lat_res/2)
 # lat_edges = lat_edges[::2]
-# obs['lat_edges'] = pd.cut(obs['lat'], lat_edges, precision=4)
+obs['lat_edges'] = pd.cut(obs['lat'], lat_edges, precision=4)
 
-# lon_res = np.diff(clusters_plot.lon)[0]
-# lon_edges = np.append(clusters_plot.lon - lon_res/2,
-#                       clusters_plot.lon[-1] + lon_res/2)
+lon_res = np.diff(clusters_plot.lon)[0]
+lon_edges = np.append(clusters_plot.lon - lon_res/2,
+                      clusters_plot.lon[-1] + lon_res/2)
 # lon_edges = lon_edges[::2]
-# obs['lon_edges'] = pd.cut(obs['lon'], lon_edges, precision=4)
+obs['lon_edges'] = pd.cut(obs['lon'], lon_edges, precision=4)
 
-# obs_density = obs.groupby(['lat_edges', 'lon_edges']).count()
-# obs_density = obs_density['Nobs'].reset_index()
-# obs_density['lat'] = obs_density['lat_edges'].apply(lambda x: x.mid)
-# obs_density['lon'] = obs_density['lon_edges'].apply(lambda x: x.mid)
-# obs_density = obs_density.set_index(['lat', 'lon'])['Nobs']
-# obs_density = obs_density.to_xarray()
+obs_density = obs.groupby(['lat_edges', 'lon_edges']).count()
+obs_density = obs_density['Nobs'].reset_index()
+obs_density['lat'] = obs_density['lat_edges'].apply(lambda x: x.mid)
+obs_density['lon'] = obs_density['lon_edges'].apply(lambda x: x.mid)
+obs_density = obs_density.set_index(['lat', 'lon'])['Nobs']
+obs_density = obs_density.to_xarray()
 
-# viridis_trans_long = cmap_trans('viridis', nalpha=50, ncolors=300)
-# fig02, ax, c = true.plot_state_format(obs_density, default_value=0,
-#                                       **{'vmin' : 0,
-#                                          'vmax' : 50,
-#                                          'cmap' : viridis_trans_long,
-#                                          'title' : 'GOSAT Observation Density'})
-# c.set_label(label='Number of Observations', fontsize=(BASEFONT+5)*SCALE,
-#             labelpad=CBAR_LABEL_PAD)
+viridis_trans_long = cmap_trans('viridis', nalpha=50, ncolors=300)
+fig02, ax, c = true.plot_state_format(obs_density, default_value=0,
+                                      **{'vmin' : 0,
+                                         'vmax' : 20,
+                                         'cmap' : viridis_trans_long,
+                                         'title' : 'GOSAT Observation Density',
+                                         'cbar_kwargs' : {'ticks' : np.arange(0, 25, 5)}})
+c.set_label(label='Number of Observations', fontsize=(BASEFONT+5)*SCALE,
+            labelpad=CBAR_LABEL_PAD)
 
-# fig02.savefig(join(plots, 'fig02_gosat_obs_density.png'),
-#               bbox_inches='tight')
-# print('Saved fig02_gosat_obs_density.png')
+fig02.savefig(join(plots, 'fig02_gosat_obs_density.png'),
+              bbox_inches='tight')
+print('Saved fig02_gosat_obs_density.png')
 
-################################
-### FIGURE : PRIOR EMISSIONS ###
-################################
-# fig03, ax, c = true.plot_state('xa_abs', clusters_plot,
-#                                **{'title' : 'Prior Emissions',
-#                                   'cmap' : cmap_trans('viridis')})
-# c.set_label(label='CH4 Emissions (Gg/month)', fontsize=(BASEFONT+5)*SCALE,
-#             labelpad=CBAR_LABEL_PAD)
+##################################
+### FIGURE 03: PRIOR EMISSIONS ###
+##################################
+fig03, ax, c = true.plot_state('xa_abs', clusters_plot,
+                               **{'title' : 'Prior Emissions',
+                                  'cmap' : cmap_trans('viridis')})
+c.set_label(label='CH4 Emissions (Gg/month)', fontsize=(BASEFONT+5)*SCALE,
+            labelpad=CBAR_LABEL_PAD)
 
-# fig03.savefig(join(plots, 'fig03_prior_emissions.png'),
-#               bbox_inches='tight')
-# print('Saved fig03_prior_emissions.png')
+fig03.savefig(join(plots, 'fig03_prior_emissions.png'),
+              bbox_inches='tight')
+print('Saved fig03_prior_emissions.png')
+
+######################################
+### FIGURE 04: TRUE POSTERIOR MEAN ###
+######################################
+fig04, ax, c = true.plot_state('xhat',
+                               clusters_plot,
+                               default_value=1,
+                               **{'title' : 'True Posterior Mean',
+                                  'cmap' : 'RdBu_r',
+                                  'vmin' : -1,
+                                  'vmax' : 3})
+c.set_label('Scaling Factors',
+            fontsize=(BASEFONT+5)*SCALE,
+            labelpad=CBAR_LABEL_PAD)
+
+fig04.savefig(join(plots, 'fig04_true_posterior_mean.png'),
+              bbox_inches='tight')
+print('Saved fig04_true_posterior_mean.png')
+
+########################################
+### FIGURE 05: TRUE AVERAGING KERNEL ###
+########################################
+fig05, ax, c = true.plot_state('dofs', clusters_plot,
+                               **{'title' : 'True Averaging Kernel',
+                                  'cmap' : plasma_trans,
+                                  'vmin' : 0,
+                                  'vmax' : 1})
+ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(true.a),
+      fontsize=(BASEFONT+5)*SCALE,
+      transform=ax.transAxes)
+c.set_label(r'$\partial\hat{x}/\partial x$',
+          fontsize=(BASEFONT+5)*SCALE,
+          labelpad=CBAR_LABEL_PAD)
+
+fig05.savefig(join(plots, 'fig05_true_averaging_kernel.png'),
+              bbox_inches='tight')
+print('Saved fig05_true_averaging_kernel.png')
+
+###########################################
+### FIGURE 06: INITIAL AVERAGING KERNEL ###
+###########################################
+fig06, ax, c = est0.plot_state('dofs', clusters_plot,
+                               **{'title' : 'Initial Averaging Kernel',
+                                  'cmap' : plasma_trans,
+                                  'vmin' : 0,
+                                  'vmax' : 1})
+ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(est0.a),
+      fontsize=(BASEFONT+5)*SCALE,
+      transform=ax.transAxes)
+c.set_label(r'$\partial\hat{x}/\partial x$',
+          fontsize=(BASEFONT+5)*SCALE,
+          labelpad=CBAR_LABEL_PAD)
+
+fig06.savefig(join(plots, 'fig06_est0_averaging_kernel.png'),
+            bbox_inches='tight')
+print('Saved fig06_est0_averaging_kernel.png')
+
+#############################################
+### FIGURE 07: FOUR PANE AVERAGING KERNEL ###
+#############################################
+fig07, fig08, fig09 = est0.full_analysis(true, clusters_plot)
+fig07.savefig(join(plots, 'fig07.png'),
+              bbox_inches='tight')
+fig08.savefig(join(plots, 'fig08.png'),
+              bbox_inches='tight')
+fig09.savefig(join(plots, 'fig09.png'),
+              bbox_inches='tight')

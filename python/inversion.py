@@ -22,6 +22,9 @@ from matplotlib.colors import LinearSegmentedColormap
 import cartopy.crs as ccrs
 import cartopy
 
+# Import information for plotting in a consistent fashion
+import format_plots as fp
+
 SCALE = 4
 BASEFONT = 10
 TITLE_LOC = 1.11
@@ -31,21 +34,6 @@ CBAR_LABEL_PAD = 75
 rcParams['font.family'] = 'serif'
 rcParams['font.size'] = BASEFONT*SCALE
 rcParams['text.usetex'] = True
-
-def color(k, cmap='inferno', lut=10):
-    c = plt.cm.get_cmap(cmap, lut=lut)
-    return colors.to_hex(c(k))
-
-def cmap_trans(cmap, ncolors=300, nalpha=20):
-    color_array = plt.get_cmap(cmap)(range(ncolors))
-
-    # change alpha values
-    color_array[:,-1] = np.append(np.linspace(0.0,1.0,20), np.ones(ncolors-nalpha))
-
-    # create a colormap object
-    map_object = LinearSegmentedColormap.from_list(name='plasma_trans',colors=color_array)
-
-    return map_object
 
 class Inversion:
     def __init__(self, k, xa, sa_vec, y, y_base, so_vec):
@@ -146,7 +134,7 @@ class Inversion:
         print('Calculating the averaging kernel.')
         self.a = np.asarray(identity(self.nstate) \
                             - self.shat @ sa_inv)
-        # self.dofs = np.diag(self.a)
+        self.dofs = np.diag(self.a)
         print('     DOFS: %.2f' % np.trace(self.a))
 
         # Calculate the new set of modeled observations.
@@ -180,36 +168,27 @@ class Inversion:
     @staticmethod
     def plot_state_format(data, default_value=0, cbar=True, **kw):
         # Get kw
-        try:
-            fig, ax = kw.pop('figax')
-        except KeyError:
-            fig, ax = plt.subplots(figsize=(8*SCALE/1.25,6*SCALE/1.25),
-                                   subplot_kw={'projection' :
-                                               ccrs.PlateCarree()})
+        fig, ax, kw = fp.get_figax(maps=True,
+                                   lats=data.lat.values,
+                                   lons=data.lon.values,
+                                   kw=kw)
 
         title = kw.pop('title', '')
         kw['cmap'] = kw.get('cmap', 'viridis')
         kw['vmin'] = kw.get('vmin', data.min())
         kw['vmax'] = kw.get('vmax', data.max())
         kw['add_colorbar'] = False
+        cbar_kwargs = kw.pop('cbar_kwargs', {})
 
         c = data.plot(ax=ax, snap=True, **kw)
 
         ax.set_title(title, y=TITLE_LOC, fontsize=(BASEFONT+10)*SCALE)
-        ax.add_feature(cartopy.feature.OCEAN, facecolor='0.98')
-        ax.add_feature(cartopy.feature.LAND, facecolor='0.98')
-        ax.coastlines(color='grey')
-        gl = ax.gridlines(linestyle=':', draw_labels=True, color='grey')
-        gl.xlabel_style = {'fontsize' : (BASEFONT-5)*SCALE}
-        gl.ylabel_style = {'fontsize' : (BASEFONT-5)*SCALE}
+        ax = fp.format_map(ax)
 
         if cbar:
-            cax = fig.add_axes([ax.get_position().x1 + 0.05,
-                                ax.get_position().y0,
-                                0.005*SCALE,
-                                ax.get_position().height])
-            cb = fig.colorbar(c, ax=ax, cax=cax)
-            cb.ax.tick_params(labelsize=BASEFONT*SCALE)
+            cax = fp.add_cax(fig, ax)
+            cb = fig.colorbar(c, ax=ax, cax=cax, **cbar_kwargs)
+            cb = fp.format_cbar(cb)
             return fig, ax, cb
         else:
             return fig, ax, c
@@ -239,8 +218,9 @@ class Inversion:
         fig, ax, c = self.plot_state_format(data, default_value, cbar, **kw)
         return fig, ax, c
 
-    def plot_grid(self, attributes, nx, ny, clusters_plot, **kw):
-        assert nx*ny == len(attributes), \
+    def plot_state_grid(self, attributes, rows, cols, clusters_plot,
+                        cbar=True, **kw):
+        assert rows*cols == len(attributes), \
                'Dimension mismatch: Data does not match number of plots.'
 
         try:
@@ -257,17 +237,14 @@ class Inversion:
         except KeyError:
             pass
 
-        fig, ax = plt.subplots(nx, ny, figsize=(ny*2*5.25*SCALE/2, nx*6.75*SCALE/2),
-                               subplot_kw={'projection' : ccrs.PlateCarree()})
-        plt.subplots_adjust(hspace=0.3, wspace=0.15)
-        # cax = fig.add_axes([0.95, 0.25/2, 0.01, 0.75])
-        cax = fig.add_axes([ax.get_position().x1 + 0.05,
-                            ax.get_position().y0,
-                            0.005*SCALE,
-                            ax.get_position().height])
+        fig, ax, kw = fp.get_figax(rows, cols, maps=True,
+                                   lats=clusters_plot.lat,
+                                   lons=clusters_plot.lon,
+                                   kw=kw)
 
-        # kw['add_colorbar'] = False
-        cbar_kwargs = kw.pop('cbar_kwargs', {})
+        if cbar:
+            cax = fp.add_cax(fig, ax)
+            cbar_kwargs = kw.pop('cbar_kwargs', {})
 
         for i, axis in enumerate(ax.flatten()):
             kw['figax'] = [fig, axis]
@@ -277,13 +254,14 @@ class Inversion:
                 kw['vmax'] = vmaxs[i]
             except NameError:
                 pass
+
             fig, axis, c = self.plot_state(attributes[i], clusters_plot,
                                            cbar=False, **kw)
+        if cbar:
+            c = fig.colorbar(c, cax=cax, **cbar_kwargs)
+            c = fp.format_cbar(c)
 
-        fig.colorbar(c, cax=cax, **cbar_kwargs)
-        cax.tick_params(labelsize=BASEFONT*SCALE)
-
-        return fig, ax, cax
+        return fig, ax, c
 
 
 class ReducedRankInversion(Inversion):
@@ -405,14 +383,6 @@ class ReducedRankInversion(Inversion):
 
         return rank, prolongation, reduction, projection
 
-    # def shat_proj_sum(self, rank):
-    #     sum_mat = np.zeros((self.nstate, self.nstate))
-    #     for i in range(rank):
-    #         l_i = self.evals[i]
-    #         v_i = self.evecs[:,i].reshape(-1,1)
-    #         sum_mat += (v_i @ v_i.T)/(1 + l_i)
-    #     return sum_mat
-
     # Need to add in cost function and other information here
     def solve_inversion_proj(self, pct_of_info=None, rank=None):
         print('... Solving projected inversion ...')
@@ -501,10 +471,7 @@ class ReducedRankInversion(Inversion):
     ##########################
 
     def plot_eval_spectra(self, **kw):
-        try:
-            fig, ax = kw.pop('figax')
-        except KeyError:
-            fig, ax = plt.subplots(figsize=(7*SCALE/1.25, 5*SCALE/1.25))
+        fig, ax, kw = fp.get_figax(aspect=1.5, kw=kw)
         label = kw.pop('label', '')
         color = kw.pop('color', plt.cm.get_cmap('inferno')(5))
         ls = kw.pop('ls', '-')
@@ -522,10 +489,7 @@ class ReducedRankInversion(Inversion):
         return fig, ax
 
     def plot_info_frac(self, **kw):
-        try:
-            fig, ax = kw.pop('figax')
-        except KeyError:
-            fig, ax = plt.subplots(figsize=(7*SCALE/1.25, 5*SCALE/1.25))
+        fig, ax, kw = fp.get_figax(aspect=1.5, kw=kw)
         label = kw.pop('label', '')
         color = kw.pop('color', plt.cm.get_cmap('inferno')(5))
         ls = kw.pop('ls', '-')
@@ -553,38 +517,13 @@ class ReducedRankInversion(Inversion):
                     ha='left', va='top', fontsize=BASEFONT*SCALE,
                     color=color)
 
-        ax.set_facecolor('0.98')
-        ax.legend(frameon=False, fontsize=(BASEFONT+5)*SCALE)
-        ax.set_xlabel('Eigenvector Index', fontsize=(BASEFONT+5)*SCALE)
-        ax.set_ylabel('Fraction of DOFS', fontsize=(BASEFONT+5)*SCALE)
-        plt.tick_params(axis='both', which='major', labelsize=BASEFONT*SCALE)
+        ax = fp.add_legend(ax)
+        ax = fp.add_labels(ax,
+                           title='Information Content Spectrum',
+                           xlabel='Eigenvector Index',
+                           ylabel='Fraction of DOFS')
 
         return fig, ax
-
-
-    # def plot_evec_comparison(self, compare_data, **kw):
-    #     try:
-    #         fig, ax = kw.pop('figax')
-    #     except KeyError:
-    #         fig, ax = plt.subplots(figsize=(10, 5))
-    #     label = kw.pop('label', '')
-    #     color = kw.pop('color', plt.cm.get_cmap('inferno')(5))
-    #     ls = kw.pop('ls', '-')
-    #     if kw:
-    #         raise TypeError('Unexpected kwargs provided: %s' % list(kw.keys()))
-
-    #     diff_neg = np.linalg.norm(self.evecs - compare_data.evecs, axis=0)
-    #     diff_pos = np.linalg.norm(self.evecs + compare_data.evecs, axis=0)
-    #     rel_diff = np.minimum(diff_neg, diff_pos)/np.linalg.norm(self.evecs, axis=0)
-    #     ax.plot(rel_diff, label=label, c=color, ls=ls)
-
-    #     ax.set_facecolor('0.98')
-    #     ax.set_xlabel('Eigenvalue Index', fontsize=22)
-    #     ax.set_ylabel(r'Eigenvector Difference', fontsize=22)
-    #     ax.set_ylim(0,3)
-    #     plt.tick_params(axis='both', which='major', labelsize=18)
-
-    #     return fig, ax
 
     @staticmethod
     def calc_stats(xdata, ydata):
@@ -592,138 +531,101 @@ class ReducedRankInversion(Inversion):
                                      ydata.flatten())
         return m, b, r
 
+    def plot_comparison_dict(self, xdata, compare_data, **kw):
+        fig, ax, kw = fp.get_figax(kw=kw)
+        cax = fp.add_cax(fig, ax)
+
+        # We need to know how many data sets were passed
+        n = len(compare_data)
+        cmap = kw.pop('cmap', 'inferno')
+
+        # Plot data
+        count = 0
+        for k, ydata in compare_data.items():
+            ax.scatter(xdata, ydata,
+                       alpha=0.5, s=5*SCALE,
+                       c=color(count, cmap=cmap, lut=n))
+            count += 1
+
+        # Color bar (always True)
+        cbar_ticklabels = kw.pop('cbar_ticklabels',
+                                 list(compare_data.keys()))
+        norm = colors.Normalize(vmin=0, vmax=n)
+        cbar = colorbar.ColorbarBase(cax,
+                                     cmap=plt.cm.get_cmap(cmap, lut=n),
+                                     norm=norm)
+        cbar.set_ticks(0.5 + np.arange(0,n+1))
+        cbar.set_ticklabels(cbar_ticklabels)
+        cbar = format_cbar(cbar)
+
+        return fig, ax, cbar
+
+    def plot_comparison_hexbin(self, xdata, compare_data,
+                               cbar, stats, **kw):
+        fig, ax, kw = fp.get_figax(kw=kw)
+
+        # Get data limits
+        xlim, ylim, xy, dmin, dmax = fp.get_square_limits(xdata, compare_data)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+
+        # Set bins and gridsize for hexbin
+        bin_max = len(self.xhat)/10
+        round_by = len(str(len(self.xhat)/20).split('.')[0]) - 1
+        bins = np.arange(0, int(round(bin_max, -round_by)))
+        gridsize = math.floor((dmax - dmin)/(xy[1] - xy[0])*40)
+
+        # Plot hexbin
+        c = ax.hexbin(xdata, compare_data,
+                      cmap=fp.cmap_trans('plasma_r'),
+                      bins=bins,
+                      gridsize=gridsize)
+
+        # Print information about R2 on the plot
+        if stats:
+            _, _, r = self.calc_stats(xdata, compare_data)
+            if r**2 <= 0.99:
+                ax.text(0.05, 0.9,
+                        r'R$^2$ = %.2f' % r**2,
+                        fontsize=(BASEFONT+5)*SCALE,
+                        transform=ax.transAxes)
+            else:
+                ax.text(0.05, 0.9,
+                        r'R$^2$ $>$ 0.99',
+                        fontsize=(BASEFONT+5)*SCALE,
+                        transform=ax.transAxes)
+
+        if cbar:
+            cax = fp.add_cax(fig, ax)
+            cbar = fig.colorbar(c, cax=cax, boundaries=bins)
+            cbar = fp.format_cbar(cbar, **kw)
+            return fig, ax, cbar
+        else:
+            return fig, ax, c
+
     def plot_comparison(self, attribute, compare_data,
                         cbar=True,
                         stats=True, **kw):
-        # get attribute data
+        # Get x data
         xdata = getattr(self, attribute)
 
-        # Get plotting kwargs
-        try:
-            fig, ax = kw.pop('figax')
-        except KeyError:
-            fig, ax = plt.subplots(figsize=(7*SCALE/1.25, 7*SCALE/1.25))
-
+        # Get other plot labels
         xlabel = kw.pop('xlabel', 'Truth')
         ylabel = kw.pop('ylabel', 'Estimate')
         title = kw.pop('title', 'Estimated vs. True ' + attribute)
 
         if type(compare_data) == dict:
-           # We need to know how many data sets were passed
-            n = len(compare_data)
-            cmap = kw.pop('cmap', 'inferno')
-            cbar_ticklabels = kw.pop('cbar_ticklabels',
-                                     list(compare_data.keys()))
-            cbar_title = kw.pop('cbar_title', '')
-
-            # Plot data
-            count = 0
-            for k, ydata in compare_data.items():
-                ax.scatter(xdata, ydata,
-                           alpha=0.5, s=5*SCALE, c=color(count, cmap=cmap, lut=n))
-                count += 1
-
-            # Color bar
-            # cax = fig.add_axes([0.95, 0.25/2, 0.01, 0.75])
-            cax = fig.add_axes([ax.get_position().x1 + 0.05,
-                                ax.get_position().y0,
-                                0.005*SCALE,
-                                ax.get_position().height])
-            norm = colors.Normalize(vmin=0, vmax=n)
-            cb = colorbar.ColorbarBase(cax,
-                                       cmap=plt.cm.get_cmap(cmap, lut=n),
-                                       norm=norm)
-            cb.set_ticks(0.5 + np.arange(0,n+1))
-            cb.set_ticklabels(cbar_ticklabels)
-            cb.set_label(cbar_title, fontsize=(BASEFONT+5)*SCALE)
-            plt.tick_params(axis='both', which='both', labelsize=BASEFONT*SCALE)
+            fig, ax, c = self.plot_comparison_dict(xdata, compare_data, **kw)
 
         else:
-            c = kw.pop('color',
-                       np.asarray(plt.cm.get_cmap('inferno',
-                                                  lut=10)(3)).reshape(1,-1))
-            # ax.scatter(xdata, compare_data,
-            #            alpha=0.5, s=5*SCALE, c=c)
-
-            # Replace with hexbin
-
-            # Get data limits
-            dmin = min(np.min(xdata), np.min(compare_data))
-            dmax = max(np.max(xdata), np.max(compare_data))
-            pad = (dmax - dmin)*0.05
-            dmin -= pad
-            dmax += pad
-
-            try:
-                # get lims
-                ylim = kw.pop('ylim')
-                xlim = kw.pop('xlim')
-                xy = (min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
-            except:
-                # set lims
-                xlim = ylim = xy = (dmin, dmax)
-
-            ax.set_xlim(xlim)
-            ax.set_ylim(ylim)
-            bin_max = len(self.xhat)/10
-            round_by = len(str(len(self.xhat)/20).split('.')[0]) - 1
-            bins = np.arange(0, int(round(bin_max, -round_by)))
-            gridsize = math.floor((dmax - dmin)/(xy[1] - xy[0])*40)
-            c = ax.hexbin(xdata, compare_data,
-                          cmap=cmap_trans('plasma_r'),
-                          bins=bins,
-                          gridsize=gridsize)
-
-            if stats:
-                # Error
-                # err_abs, err_rel = self.calc_error(attribute, compare_data)
-                m, b, r = self.calc_stats(xdata, compare_data)
-                xs = np.array([dmin, dmax])
-                ys = m*xs + b
-                # ax.plot(xs, ys, c=color(6))
-                if r**2 <= 0.99:
-                    ax.text(0.05, 0.9,
-                            r'R$^2$ = %.2f' % r**2,
-                            fontsize=(BASEFONT+5)*SCALE,
-                            transform=ax.transAxes)
-                else:
-                    ax.text(0.05, 0.9,
-                            r'R$^2$ $>$ 0.99',
-                            fontsize=(BASEFONT+5)*SCALE,
-                            transform=ax.transAxes)
-                # ax.text(0.05, 0.825,
-                #         r'Slope = %.2f' % m,
-                #         fontsize=(BASEFONT+5)*SCALE,
-                #         transform=ax.transAxes)
-                # ax.text(0.05, 0.75,
-                #         r'Intercept = %.2f' % b,
-                #         fontsize=(BASEFONT+5)*SCALE,
-                #         transform=ax.transAxes)
+            fig, ax, c = self.plot_comparison_hexbin(xdata, compare_data,
+                                                     cbar, stats, **kw)
 
         # Aesthetics
-        ax.set_facecolor('0.98')
+        ax = fp.plot_one_to_one(ax)
+        ax = fp.add_labels(ax, title, xlabel, ylabel)
 
-        ax.plot(xy, xy, c='0.1', lw=2, ls=':', alpha=0.5, zorder=0)
-        ax.set_xlabel(xlabel, fontsize=(BASEFONT+6)*SCALE,
-                      labelpad=LABEL_PAD)
-        ax.set_ylabel(ylabel, fontsize=(BASEFONT+6)*SCALE,
-                      labelpad=LABEL_PAD)
-        ax.set_title(title, fontsize=(BASEFONT+10)*SCALE, y=TITLE_LOC-0.06)
-        ax.tick_params(axis='both', which='both', labelsize=BASEFONT*SCALE)
-
-        if cbar:
-            # cax = fig.add_axes([0.925, 0.25/2, 0.015, 0.75])
-            cax = fig.add_axes([ax.get_position().x1 + 0.05,
-                                ax.get_position().y0,
-                                0.005*SCALE,
-                                ax.get_position().height])
-            cb = plt.colorbar(c, cax=cax, boundaries=bins)
-            cb.ax.tick_params(labelsize=BASEFONT*SCALE)
-            return fig, ax, cb
-        else:
-            return fig, ax, c
-
-    # def calc_difference(self, attribute, compare_data, norm_func=norm):
+        return fig, ax, c
 
 
 class ReducedRankJacobian(ReducedRankInversion):
@@ -901,16 +803,6 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         return rank, significance
 
-    def broyden(self, forward_model, perturbation_matrix, factor=10):
-        # perturbation_diff = np.diff(perturbation_matrix, axis=1)
-        # for p in perturbation_diff.T:
-        #     p = p.reshape(-1, 1)
-        #     self.k += ((forward_model - self.k) @ p @ p.T)/(p**2).sum()
-        for i in range(perturbation_matrix.shape[1] - factor):
-            p = perturbation_matrix[:, i:(i + factor)]
-            p = p.reshape(-1, factor)
-            self.k += ((forward_model - self.k) @ p @ p.T)/(p**2).sum()
-
     def update_jacobian_ag(self, forward_model, clusters_plot,
                         pct_of_info=None,
                         n_cells=[100, 200],
@@ -1073,133 +965,49 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         return self_f, true_f
 
-    def full_analysis(self, true, clusters_plot):
-        if ((self.xhat_fr is None) or (true.xhat_fr is None)):
-            print('Reduced rank inversion is not solved.')
-            fig1, ax = plt.subplots(1, 4, figsize=(22*SCALE, 4.5*SCALE))
-            axis = ax
-        else:
-            fig1, ax = plt.subplots(2, 4, figsize=(16*4/3*SCALE, 11*SCALE))
-
-            # Projected estimated posterior vs. true posterior
-            title = r'$\tilde{\hat{x}_{K\Pi}}\ vs.\ \hat{x}$'
-            fig1, ax[1, 0], c = true.plot_comparison('xhat_kproj', self.xhat,
-                                                     cbar=False,
-                                                     **{'figax' : [fig1, ax[1, 0]],
-                                                        'title' : title,
-                                                        'xlabel' : 'Truth',
-                                                        'ylabel' : 'Estimate'})
-
-            # Full rank posterior vs. true posterior
-            title = r'$\tilde{\hat{x}_{FR}}\ vs.\ \hat{x}$'
-            fig1, ax[1, 1], c = true.plot_comparison('xhat_fr', self.xhat,
-                                                     cbar=False,
-                                                     **{'figax' : [fig1, ax[1, 1]],
-                                                        'title' : title,
-                                                        'xlabel' : 'Truth',
-                                                        'ylabel' : 'Estimate'})
-
-            # Projected error vs. true error
-            true.shat_diag = np.diag(true.shat)
-            self.shat_kproj_diag = np.diag(self.shat_kproj)
-            title = r'$\tilde{\hat{S}_{K\Pi}}$ vs. $\hat{S}$'
-            fig1, ax[1, 2], c = true.plot_comparison('shat_iag', self.shat_kproj_diag,
-                                                     cbar=False,
-                                                      **{'figax' : [fig1, ax[1, 2]],
-                                                         'title' : title,
-                                                         'xlabel' : 'Truth',
-                                                         'ylabel' : 'Estimate'})
-            del true.shat_diag
-            del self.shat_kproj_diag
-
-
-            title = r'$\tilde{A_{K\Pi}}$ vs. $A$'
-            true.a_diag = np.diag(true.a)
-            self.a_kproj_diag = np.diag(self.a_kproj)
-            fig1, ax[1, 3], c = true.plot_comparison('a_diag', self.a_kproj_diag,
-                                                     cbar=False,
-                                                      **{'figax' : [fig1, ax[1, 2]],
-                                                         'title' : title,
-                                                         'xlabel' : 'Truth',
-                                                         'ylabel' : 'Estimate'})
-
-            axis = ax[0, :]
-
-        # Full dimension Jacobian
-        fig1, axis[0], c = true.plot_comparison('k', self.k,
-                                                cbar=False,
-                                                **{'figax' : [fig1, axis[0]],
-                                                   'title' : r'Jacobian',
-                                                   'xlabel' : 'Truth',
-                                                   'ylabel' : 'Estimate'})
-
-        # Posterior
-        fig1, axis[1], c = true.plot_comparison('xhat', self.xhat,
-                                                cbar=False,
-                                                **{'figax' : [fig1, axis[1]],
-                                                   'title' : r'Posterior Mean',
-                                                   'xlabel' : 'Truth',
-                                                   'ylabel' : 'Estimate'})
-
-        # Posterior error
+    def plot_comparison_inversion(self, true):
+        # Add variance as an object of each object
         true.shat_diag = np.diag(true.shat)
         self.shat_diag = np.diag(self.shat)
-        fig1, axis[2], c = true.plot_comparison('shat_diag', self.shat_diag,
-                                                cbar=False,
-                                                **{'figax' : [fig1, axis[2]],
-                                                   'title' : r'Posterior Variance',
-                                                   'xlabel' : 'Truth',
-                                                   'ylabel' : 'Estimate'})
-        del true.shat_diag
-        del self.shat_diag
 
-        # Averaging Kernel diagonal
-        true.a_diag = np.diag(true.a)
-        self.a_diag = np.diag(self.a)
-        fig1, axis[3], c = true.plot_comparison('a_diag', self.a_diag,
-                                                cbar=True,
-                                                **{'figax' : [fig1, axis[3]],
-                                                   'title' : r'Averaging Kernel',
-                                                   'xlabel' : 'Truth',
-                                                   'ylabel' : 'Estimate'})
+        fig, ax = fp.get_figax(rows=1, cols=4)
+        fig, ax[0], c = true.plot_comparison('k', self.k, cbar=False,
+                                             **{'figax' : [fig, ax[0]],
+                                                'title' : 'Jacobian'})
+        fig, ax[1], c = true.plot_comparison('xhat', self.xhat, cbar=False,
+                                             **{'figax' : [fig, ax[1]],
+                                                'title' :
+                                                'Posterior Emissions'})
+        fig, ax[2], c = true.plot_comparison('shat_diag', self.shat_diag,
+                                             cbar=False,
+                                            **{'figax' : [fig, ax[2]],
+                                               'title' : 'Posterior Variance'})
+        fig, ax[3], c = true.plot_comparison('dofs', self.dofs, cbar=True,
+                                            **{'figax' : [fig, ax[3]],
+                                               'title' : 'Averaging Kernel'})
+        for axis in ax:
+            axis.set_aspect('equal')
 
-        for ax in fig1.axes[:-1]:
-            ax.set_aspect('equal')
+        return fig, ax
 
-        # # Add colorbar
-        # cax = fig1.add_axes([0.95, 0.25/2, 0.01, 0.75])
-        # fig1.colorbar(c, cax=cax, boundaries=)
-        # cax.tick_params(labelsize=40)
-        # cax.set_ylabel('Eigenvector Value', fontsize=(BASEFONT+5)*SCALE)
-
-        # ax[2].set_title(ax[2].get_title(), fontsize=40)
-
-        # for a in ax.flatten():
-        #     a.set_xlabel(a.get_xlabel(), fontsize=30)
-        #     a.set_ylabel(a.get_ylabel(), fontsize=30)
+    def full_analysis(self, true, clusters_plot):
+        # Compare inverse quantities
+        fig01, ax = self.plot_comparison_inversion(true)
 
         # Compare spectra
-        fig2, ax = plt.subplots(figsize=(10*SCALE/1.25, 3*SCALE/1.25))
-        fig2, ax = true.plot_info_frac(figax=[fig2, ax],
-                                       label='True',
-                                       color=color(0),
-                                       text=False)
-        self.plot_info_frac(figax=[fig2, ax],
-                            label='Update',
-                            ls=':',
-                            color=color(5))
-        ax.set_ylabel('Fraction of DOFS', fontsize=(BASEFONT+6)*SCALE,
-                      labelpad=LABEL_PAD)
-        ax.set_xlabel('Eigenvector Index', fontsize=(BASEFONT+6)*SCALE,
-                      labelpad=LABEL_PAD)
-        ax.tick_params(axis='both', which='both', labelsize=BASEFONT*SCALE)
+        fig02, ax = true.plot_info_frac(label='True',
+                                        color=fp.color(0),
+                                        text=False)
+        fig02, ax = self.plot_info_frac(figax=[fig02, ax],
+                                        label='Update',
+                                        ls=':',
+                                        color=fp.color(5))
 
         # Plot the first few eigenvectors to give an idea of the
         # eigenspace
-        nx = 2
-        ny = 4
-        plot_data = [('evecs', i) for i in range(ny)]
-        titles = ['%d' % (i+1) for i in range(ny)]
+        rows = 2
+        cols = 4
+        plot_data = [('evecs', i) for i in range(cols)]
 
         kw = {'vmin' : -0.1,
               'vmax' : 0.1,
@@ -1207,27 +1015,25 @@ class ReducedRankJacobian(ReducedRankInversion):
               'add_colorbar' : False}
         cbar_kwargs = {'ticks' : [-0.1, 0, 0.1]}
 
-        fig3, ax = plt.subplots(nx, ny, figsize=(ny*2*5.25,nx*6.75),
-                               subplot_kw={'projection' : ccrs.PlateCarree()})
-        plt.subplots_adjust(hspace=0.5, wspace=0.15)
-        cax = fig3.add_axes([0.95, 0.25/2, 0.01, 0.75])
+        fig03, ax = fp.get_figax(rows, cols, maps=True,
+                                 lats=clusters_plot.lat,
+                                 lons=clusters_plot.lon)
 
+        kw['figax'] = [fig03, ax[0, :]]
+        kw['titles'] = ['Eigenvector %d' % (i+1) for i in range(cols)]
+        fig03, ax[0, :], c = true.plot_state_grid(plot_data, rows=1, cols=cols,
+                                                  clusters_plot=clusters_plot,
+                                                  cbar=False, **kw)
 
-        for i in range(ny):
-            kw['title'] = titles[i]
-            kw['figax'] = [fig3, ax[0, i]]
-            fig3, ax[0, i], c = true.plot_state(plot_data[i], clusters_plot,
-                                                cbar=False, **kw)
-            kw['figax'] = [fig3, ax[1, i]]
-            fig3, ax[1, i], c = self.plot_state(plot_data[i], clusters_plot,
-                                                cbar=False, **kw)
+        kw['figax'] = [fig03, ax[1, :]]
+        kw['titles'] = ['' for i in range(cols)]
+        fig03, ax[1, :], c = self.plot_state_grid(plot_data, rows=1, cols=cols,
+                                                  clusters_plot=clusters_plot,
+                                                  cbar=False, **kw)
 
-        for axis in ax.flatten():
-            axis.set_title(axis.get_title(), fontsize=(BASEFONT+10)*SCALE)
-
-        fig3.colorbar(c, cax=cax, **cbar_kwargs)
-        cax.tick_params(labelsize=40)
-        cax.set_ylabel('Eigenvector Value', fontsize=(BASEFONT+5)*SCALE)
+        cax = fp.add_cax(fig03, ax)
+        cbar = fig03.colorbar(c, cax=cax, **cbar_kwargs)
+        cbar = fp.format_cbar(cbar, **{'cbar_title' : 'Eigenvector Value'})
 
         # Add label
         ax[0, 0].text(-0.1, 0.5, 'Truth', fontsize=(BASEFONT+10)*SCALE,
@@ -1237,10 +1043,4 @@ class ReducedRankJacobian(ReducedRankInversion):
                       rotation=90, ha='center', va='center',
                       transform=ax[1,0].transAxes)
 
-        return fig1, fig2, fig3
-
-
-        # # And plot the difference between each eigenvector
-        # # We use the two norm because we want to look at how close
-        # # the two are and not worry so much about outliers.
-        # true.plot_evec_comparison(self)
+        return fig01, fig02, fig03
