@@ -25,14 +25,27 @@ import cartopy
 # Import information for plotting in a consistent fashion
 import format_plots as fp
 
-SCALE = 4
-BASEFONT = 10
-TITLE_LOC = 1.11
+# Figure sizes
+SCALE = 2
+# BASE_FIG_SIZE = 6
+BASE_WIDTH = 8
+BASE_HEIGHT = 4.5
+
+# Fontsizes
+TITLE_FONTSIZE = 18
+SUBTITLE_FONTSIZE = 14
+LABEL_FONTSIZE = 12
+TICK_FONTSIZE = 10
+
+# Position
+TITLE_LOC = 1.1
 CBAR_PAD = 0.05
-LABEL_PAD = 5
+LABEL_PAD = 20
 CBAR_LABEL_PAD = 75
+
+# Other font details
 rcParams['font.family'] = 'serif'
-rcParams['font.size'] = BASEFONT*SCALE
+rcParams['font.size'] = LABEL_FONTSIZE*SCALE
 rcParams['text.usetex'] = True
 
 class Inversion:
@@ -179,16 +192,22 @@ class Inversion:
         kw['vmax'] = kw.get('vmax', data.max())
         kw['add_colorbar'] = False
         cbar_kwargs = kw.pop('cbar_kwargs', {})
+        label_kwargs = kw.pop('label_kwargs', {})
+        title_kwargs = kw.pop('title_kwargs', {})
+        map_kwargs = kw.pop('map_kwargs', {})
 
         c = data.plot(ax=ax, snap=True, **kw)
+        ax.set_xlim(data.lon.min(), data.lon.max())
+        ax.set_ylim(data.lat.min(), data.lat.max())
 
-        ax.set_title(title, y=TITLE_LOC, fontsize=(BASEFONT+10)*SCALE)
-        ax = fp.format_map(ax)
+        ax = fp.add_title(ax, title, **title_kwargs)
+        ax = fp.format_map(ax, **map_kwargs)
 
         if cbar:
+            cbar_title = cbar_kwargs.pop('title', '')
             cax = fp.add_cax(fig, ax)
             cb = fig.colorbar(c, ax=ax, cax=cax, **cbar_kwargs)
-            cb = fp.format_cbar(cb)
+            cb = fp.format_cbar(cb, cbar_title)
             return fig, ax, cb
         else:
             return fig, ax, c
@@ -258,8 +277,9 @@ class Inversion:
             fig, axis, c = self.plot_state(attributes[i], clusters_plot,
                                            cbar=False, **kw)
         if cbar:
+            cbar_title = fp.format_cbar(cb, cbar_title)
             c = fig.colorbar(c, cax=cax, **cbar_kwargs)
-            c = fp.format_cbar(c)
+            c = fp.format_cbar(c, cbar_title)
 
         return fig, ax, c
 
@@ -470,26 +490,8 @@ class ReducedRankInversion(Inversion):
     ### PLOTTING FUNCTIONS ###
     ##########################
 
-    def plot_eval_spectra(self, **kw):
-        fig, ax, kw = fp.get_figax(aspect=1.5, kw=kw)
-        label = kw.pop('label', '')
-        color = kw.pop('color', plt.cm.get_cmap('inferno')(5))
-        ls = kw.pop('ls', '-')
-        if kw:
-            raise TypeError('Unexpected kwargs provided: %s' % list(kw.keys()))
-
-        ax.plot(self.evals_q, label=label, c=color, ls=ls)
-
-        ax.set_facecolor('0.98')
-        ax.legend(frameon=False, fontsize=(BASEFONT+5)*SCALE)
-        ax.set_xlabel('Eigenvalue Index', fontsize=(BASEFONT+5)*SCALE)
-        ax.set_ylabel(r'Q$_{DOF}$ Eigenvalues', fontsize=(BASEFONT+5)*SCALE)
-        plt.tick_params(axis='both', which='major', labelsize=BASEFONT*SCALE)
-
-        return fig, ax
-
     def plot_info_frac(self, **kw):
-        fig, ax, kw = fp.get_figax(aspect=1.5, kw=kw)
+        fig, ax, kw = fp.get_figax(aspect=1.75, kw=kw)
         label = kw.pop('label', '')
         color = kw.pop('color', plt.cm.get_cmap('inferno')(5))
         ls = kw.pop('ls', '-')
@@ -506,22 +508,22 @@ class ReducedRankInversion(Inversion):
             ax.scatter(snr_idx, frac[snr_idx], s=10*SCALE, c=color)
             ax.text(snr_idx + self.nstate*0.01, frac[snr_idx],
                     r'SNR $\approx$ 1',
-                    ha='left', va='top', fontsize=BASEFONT*SCALE,
+                    ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
                     color=color)
             ax.text(snr_idx + self.nstate*0.01, frac[snr_idx] - 0.1,
                     'n = %d' % snr_idx,
-                    ha='left', va='top', fontsize=BASEFONT*SCALE,
+                    ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
                     color=color)
             ax.text(snr_idx + self.nstate*0.01, frac[snr_idx] - 0.2,
                     r'$f_{DOFS}$ = %.2f' % frac[snr_idx],
-                    ha='left', va='top', fontsize=BASEFONT*SCALE,
+                    ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
                     color=color)
 
         ax = fp.add_legend(ax)
         ax = fp.add_labels(ax,
-                           title='Information Content Spectrum',
                            xlabel='Eigenvector Index',
                            ylabel='Fraction of DOFS')
+        ax = fp.add_title(ax, title='Information Content Spectrum')
 
         return fig, ax
 
@@ -533,7 +535,7 @@ class ReducedRankInversion(Inversion):
 
     def plot_comparison_dict(self, xdata, compare_data, **kw):
         fig, ax, kw = fp.get_figax(kw=kw)
-        cax = fp.add_cax(fig, ax)
+        ax.set_aspect('equal')
 
         # We need to know how many data sets were passed
         n = len(compare_data)
@@ -548,6 +550,7 @@ class ReducedRankInversion(Inversion):
             count += 1
 
         # Color bar (always True)
+        cax = fp.add_cax(fig, ax)
         cbar_ticklabels = kw.pop('cbar_ticklabels',
                                  list(compare_data.keys()))
         norm = colors.Normalize(vmin=0, vmax=n)
@@ -562,12 +565,12 @@ class ReducedRankInversion(Inversion):
 
     def plot_comparison_hexbin(self, xdata, compare_data,
                                cbar, stats, **kw):
+        cbar_kwargs = kw.pop('cbar_kwargs', {})
         fig, ax, kw = fp.get_figax(kw=kw)
+        ax.set_aspect('equal')
 
         # Get data limits
         xlim, ylim, xy, dmin, dmax = fp.get_square_limits(xdata, compare_data)
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
 
         # Set bins and gridsize for hexbin
         bin_max = len(self.xhat)/10
@@ -581,24 +584,30 @@ class ReducedRankInversion(Inversion):
                       bins=bins,
                       gridsize=gridsize)
 
+        # Aesthetics
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+
         # Print information about R2 on the plot
         if stats:
             _, _, r = self.calc_stats(xdata, compare_data)
             if r**2 <= 0.99:
-                ax.text(0.05, 0.9,
+                ax.text(0.05, 0.8,
                         r'R$^2$ = %.2f' % r**2,
-                        fontsize=(BASEFONT+5)*SCALE,
+                        fontsize=LABEL_FONTSIZE*SCALE,
                         transform=ax.transAxes)
             else:
-                ax.text(0.05, 0.9,
+                ax.text(0.05, 0.8,
                         r'R$^2$ $>$ 0.99',
-                        fontsize=(BASEFONT+5)*SCALE,
+                        fontsize=LABEL_FONTSIZE*SCALE,
                         transform=ax.transAxes)
 
         if cbar:
+            cbar_title = cbar_kwargs.pop('title', '')
             cax = fp.add_cax(fig, ax)
-            cbar = fig.colorbar(c, cax=cax, boundaries=bins)
-            cbar = fp.format_cbar(cbar, **kw)
+            cbar = fig.colorbar(c, cax=cax, boundaries=bins,
+                                **cbar_kwargs)
+            cbar = fp.format_cbar(cbar, cbar_title)
             return fig, ax, cbar
         else:
             return fig, ax, c
@@ -612,7 +621,9 @@ class ReducedRankInversion(Inversion):
         # Get other plot labels
         xlabel = kw.pop('xlabel', 'Truth')
         ylabel = kw.pop('ylabel', 'Estimate')
+        label_kwargs = kw.pop('label_kwargs', {})
         title = kw.pop('title', 'Estimated vs. True ' + attribute)
+        title_kwargs = kw.pop('title_kwargs', {})
 
         if type(compare_data) == dict:
             fig, ax, c = self.plot_comparison_dict(xdata, compare_data, **kw)
@@ -623,7 +634,13 @@ class ReducedRankInversion(Inversion):
 
         # Aesthetics
         ax = fp.plot_one_to_one(ax)
-        ax = fp.add_labels(ax, title, xlabel, ylabel)
+        ax = fp.add_labels(ax, xlabel, ylabel, **label_kwargs)
+        ax = fp.add_title(ax, title, **title_kwargs)
+
+        # Make sure we have the same ticks
+        # ax.set_yticks(ax.get_xticks(minor=False), minor=False)
+        # ax.set_xticks(ax.get_yticks(minor=False), minor=False)
+        # ax.set_xlim(ax.get_ylim())
 
         return fig, ax, c
 
@@ -970,23 +987,37 @@ class ReducedRankJacobian(ReducedRankInversion):
         true.shat_diag = np.diag(true.shat)
         self.shat_diag = np.diag(self.shat)
 
+        # set the font sizes differently
+        title_kwargs = {'fontsize' : SUBTITLE_FONTSIZE*SCALE}
+        label_kwargs = {'labelpad' : LABEL_PAD/2}
+
         fig, ax = fp.get_figax(rows=1, cols=4)
         fig, ax[0], c = true.plot_comparison('k', self.k, cbar=False,
                                              **{'figax' : [fig, ax[0]],
-                                                'title' : 'Jacobian'})
+                                                'title' : 'Jacobian',
+                                                'title_kwargs' : title_kwargs,
+                                                'label_kwargs' : label_kwargs})
         fig, ax[1], c = true.plot_comparison('xhat', self.xhat, cbar=False,
                                              **{'figax' : [fig, ax[1]],
                                                 'title' :
-                                                'Posterior Emissions'})
+                                                'Posterior\nEmissions',
+                                                'title_kwargs' : title_kwargs,
+                                                'ylabel' : '',
+                                                'label_kwargs' : label_kwargs})
         fig, ax[2], c = true.plot_comparison('shat_diag', self.shat_diag,
                                              cbar=False,
                                             **{'figax' : [fig, ax[2]],
-                                               'title' : 'Posterior Variance'})
+                                               'title' : 'Posterior\nVariance',
+                                               'title_kwargs' : title_kwargs,
+                                               'ylabel' : '',
+                                               'label_kwargs' : label_kwargs})
         fig, ax[3], c = true.plot_comparison('dofs', self.dofs, cbar=True,
                                             **{'figax' : [fig, ax[3]],
-                                               'title' : 'Averaging Kernel'})
-        for axis in ax:
-            axis.set_aspect('equal')
+                                               'title' : 'Averaging\nKernel',
+                                               'title_kwargs' : title_kwargs,
+                                               'ylabel' : '',
+                                               'label_kwargs' : label_kwargs,
+                                               'cbar_kwargs' : {'title' : 'Count'}})
 
         return fig, ax
 
@@ -1012,7 +1043,9 @@ class ReducedRankJacobian(ReducedRankInversion):
         kw = {'vmin' : -0.1,
               'vmax' : 0.1,
               'cmap' : 'RdBu_r',
-              'add_colorbar' : False}
+              'add_colorbar' : False,
+              'title_kwargs' : {'fontsize' : SUBTITLE_FONTSIZE*SCALE},
+              'map_kwargs' : {'draw_labels' : False}}
         cbar_kwargs = {'ticks' : [-0.1, 0, 0.1]}
 
         fig03, ax = fp.get_figax(rows, cols, maps=True,
@@ -1036,10 +1069,10 @@ class ReducedRankJacobian(ReducedRankInversion):
         cbar = fp.format_cbar(cbar, **{'cbar_title' : 'Eigenvector Value'})
 
         # Add label
-        ax[0, 0].text(-0.1, 0.5, 'Truth', fontsize=(BASEFONT+10)*SCALE,
+        ax[0, 0].text(-0.2, 0.5, 'Truth', fontsize=LABEL_FONTSIZE*SCALE,
                       rotation=90, ha='center', va='center',
                       transform=ax[0,0].transAxes)
-        ax[1, 0].text(-0.1, 0.5, 'Estimate', fontsize=(BASEFONT+10)*SCALE,
+        ax[1, 0].text(-0.2, 0.5, 'Estimate', fontsize=LABEL_FONTSIZE*SCALE,
                       rotation=90, ha='center', va='center',
                       transform=ax[1,0].transAxes)
 

@@ -22,14 +22,27 @@ from matplotlib.colors import LinearSegmentedColormap
 import cartopy.crs as ccrs
 import cartopy
 
-SCALE = 4
-BASEFONT = 10
-TITLE_LOC = 1.11
+# Figure sizes
+SCALE = 2
+# BASE_FIG_SIZE = 6
+BASE_WIDTH = 8
+BASE_HEIGHT = 4.5
+
+# Fontsizes
+TITLE_FONTSIZE = 18
+SUBTITLE_FONTSIZE = 14
+LABEL_FONTSIZE = 12
+TICK_FONTSIZE = 10
+
+# Position
+TITLE_LOC = 1.1
 CBAR_PAD = 0.05
-LABEL_PAD = 5
+LABEL_PAD = 20
 CBAR_LABEL_PAD = 75
+
+# Other font details
 rcParams['font.family'] = 'serif'
-rcParams['font.size'] = BASEFONT*SCALE
+rcParams['font.size'] = LABEL_FONTSIZE*SCALE
 rcParams['text.usetex'] = True
 
 def color(k, cmap='inferno', lut=10):
@@ -49,10 +62,27 @@ def cmap_trans(cmap, ncolors=300, nalpha=20):
     return map_object
 
 def get_figsize(aspect, rows, cols):
-    if aspect > 1:
-        return (6*SCALE, 6*SCALE/aspect)
+    # if rows > 1 or cols > 1:
+    #     factor = max(rows, cols)/2
+    # else:
+    #     factor = 1
+
+    if cols > 1:
+        added_width = 1.25
     else:
-        return (6*SCALE*aspect, 6*SCALE)
+        added_width = 1
+
+    aspect *= added_width
+    max_width = BASE_WIDTH*SCALE
+    max_height = BASE_HEIGHT*SCALE
+
+    if aspect > 1: # width > height
+        figsize = (max_width,
+                   max_width/aspect)
+    else: # width < height
+        figsize = (max_height*aspect,
+                   max_height)
+    return figsize
 
 def get_aspect(rows, cols, aspect=None, maps=False, lats=None, lons=None):
     if maps:
@@ -60,35 +90,47 @@ def get_aspect(rows, cols, aspect=None, maps=False, lats=None, lons=None):
         xsize = np.ptp([lons.max(), lons.min()])*aspect
         ysize = np.ptp([lats.max(), lats.min()])
         aspect = xsize/ysize
-    aspect *= cols/rows
-    return aspect
+    return aspect*cols/rows
 
 def make_axes(rows=1, cols=1, aspect=None, maps=False, lats=None, lons=None):
     aspect = get_aspect(rows, cols, aspect, maps, lats, lons)
+    figsize = get_figsize(aspect, rows, cols)
+    kw = {}
     if maps:
-        figsize = get_figsize(aspect, rows, cols)
-        fig, ax = plt.subplots(rows, cols,
-                               figsize=figsize,
-                               subplot_kw={'projection' : ccrs.PlateCarree()})
-    else:
-        figsize = get_figsize(aspect, rows, cols)
-        fig, ax = plt.subplots(rows, cols,
-                               figsize=figsize)
-    plt.subplots_adjust(hspace=0.3, wspace=0.15)
+        kw['subplot_kw'] = {'projection' : ccrs.PlateCarree()}
+    # if (rows + cols) > 2:
+    #     kw['constrained_layout'] = True
+        # figsize = tuple(f*1.5 for f in figsize)
+    fig, ax = plt.subplots(rows, cols, figsize=figsize, **kw)
+    # plt.subplots_adjust(right=1)
     return fig, ax
 
 def add_cax(fig, ax):
     try:
-        cax = fig.add_axes([ax.get_position().x1 + 0.05,
-                            ax.get_position().y0,
-                            0.005*SCALE,
-                            ax.get_position().height])
-    except AttributeError:
-        cax = fig.add_axes([ax[-1, -1].get_position().x1 + 0.05,
-                            ax[-1, -1].get_position().y0,
-                            0.005*SCALE,
-                            ax[0, -1].get_position().y1 \
-                            - ax[-1, -1].get_position().y0])
+        axis = ax[-1, -1]
+        height = ax[0, -1].get_position().y1 - ax[-1, -1].get_position().y0
+    except IndexError:
+        axis = ax[-1]
+        height = ax[-1].get_position().height
+    except TypeError:
+        axis = ax
+        height = ax.get_position().height
+
+    # x0
+    cbar_pad_inches = 0.75
+    fig_width = fig.get_size_inches()[0]
+    x0_init = axis.get_position().x1
+    x0 = (fig_width*x0_init + cbar_pad_inches)/fig_width
+
+    # y0
+    y0 = axis.get_position().y0
+
+    # Width
+    cbar_width_inches = 0.2
+    width = cbar_width_inches/fig_width
+
+    # Make axis
+    cax = fig.add_axes([x0, y0, width, height])
 
     return cax
 
@@ -103,6 +145,7 @@ def get_figax(rows=1, cols=1, aspect=1,
     if (rows > 1) or (cols > 1):
         for axis in ax.flatten():
             axis.set_facecolor('0.98')
+        # plt.subplots_adjust(hspace=0.1, wspace=0.4)
     else:
         ax.set_facecolor('0.98')
 
@@ -111,17 +154,21 @@ def get_figax(rows=1, cols=1, aspect=1,
     else:
         return fig, ax
 
-def add_labels(ax, title, xlabel, ylabel):
-    ax.set_xlabel(xlabel, fontsize=(BASEFONT+6)*SCALE,
-                  labelpad=LABEL_PAD)
-    ax.set_ylabel(ylabel, fontsize=(BASEFONT+6)*SCALE,
-                  labelpad=LABEL_PAD)
-    ax.set_title(title, fontsize=(BASEFONT+10)*SCALE, y=TITLE_LOC-0.06)
-    ax.tick_params(axis='both', which='both', labelsize=BASEFONT*SCALE)
+def add_labels(ax, xlabel, ylabel,
+               fontsize=LABEL_FONTSIZE*SCALE,
+               labelsize=TICK_FONTSIZE*SCALE,
+               labelpad=LABEL_PAD):
+    ax.set_xlabel(xlabel, fontsize=fontsize, labelpad=labelpad)
+    ax.set_ylabel(ylabel, fontsize=fontsize, labelpad=labelpad)
+    ax.tick_params(axis='both', which='both', labelsize=labelsize)
     return ax
 
-def add_legend(ax):
-    ax.legend(frameon=False, fontsize=(BASEFONT+5)*SCALE)
+def add_legend(ax, frameon=False, fontsize=LABEL_FONTSIZE*SCALE, **kw):
+    ax.legend(frameon=frameon, fontsize=fontsize, **kw)
+    return ax
+
+def add_title(ax, title, y=TITLE_LOC, fontsize=TITLE_FONTSIZE*SCALE, **kw):
+    ax.set_title(title, y=y, fontsize=fontsize, **kw)
     return ax
 
 def get_square_limits(xdata, ydata):
@@ -143,20 +190,25 @@ def get_square_limits(xdata, ydata):
 
     return xlim, ylim, xy, dmin, dmax
 
-def format_map(ax):
+def format_map(ax, fontsize=TICK_FONTSIZE*SCALE, draw_labels=True):
     ax.add_feature(cartopy.feature.OCEAN, facecolor='0.98')
     ax.add_feature(cartopy.feature.LAND, facecolor='0.98')
     ax.coastlines(color='grey')
-    gl = ax.gridlines(linestyle=':', draw_labels=True, color='grey')
-    gl.xlabel_style = {'fontsize' : (BASEFONT-5)*SCALE}
-    gl.ylabel_style = {'fontsize' : (BASEFONT-5)*SCALE}
+    gl = ax.gridlines(linestyle=':', draw_labels=draw_labels, color='grey')
+    gl.xlabel_style = {'fontsize' : fontsize}
+    gl.ylabel_style = {'fontsize' : fontsize}
     return ax
 
-def format_cbar(cbar, **kw):
-    cbar_title = kw.pop('cbar_title', '')
-    cbar.set_label(cbar_title, fontsize=(BASEFONT+5)*SCALE)
+def format_cbar(cbar, cbar_title=''):
+    # cbar.set_label(cbar_title, fontsize=BASEFONT*SCALE,
+    #                labelpad=CBAR_LABEL_PAD)
+    cbar.ax.text(5.25, 0.5, cbar_title,
+                 ha='center', va='center',
+                 rotation='vertical',
+                 fontsize=LABEL_FONTSIZE*SCALE,
+                 transform=cbar.ax.transAxes)
     cbar.ax.tick_params(axis='both', which='both',
-                        labelsize=(BASEFONT+5)*SCALE)
+                        labelsize=TICK_FONTSIZE*SCALE)
     return cbar
 
 def plot_one_to_one(ax):
