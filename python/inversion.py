@@ -180,19 +180,67 @@ It also defines the following plotting functions:
 
     def obs_mod_diff(self, x):
         '''
-        Calculate the
+        Calculate the difference between the true observations y and the
+        simulated observations Kx + c for a given x. It returns this
+        difference as a vector.
+
+        Parameters:
+            x      The state vector at which to evaluate the difference
+                   between the true and simulated observations
+        Returns:
+            diff   The difference between the true and simulated observations
+                   as a vector
         '''
-        return self.y - (self.k @ x + self.c)
+        diff = self.y - (self.k @ x + self.c)
+        return diff
 
     def cost_func(self, x):
+        '''
+        Calculate the value of the Bayesian cost function
+            J(x) = (x - xa)T Sa (x-xa) + rf(y - Kx)T So (y - Kx)
+        for a given x. Prints out that value and the contributions from
+        the emission and observational terms.
+
+        Parameters:
+            x      The state vector at which to evaluate the cost function
+        Returns:
+            cost   The value of the cost function at x
+        '''
+
+        # Calculate the observational component of the cost function
         cost_obs = self.obs_mod_diff(x).T \
                    @ diags(self.rf/self.so_vec) @ self.obs_mod_diff(x)
+
+        # Calculate the emissions/prior component of the cost function
         cost_emi = (x - self.xa).T @ diags(1/self.sa_vec) @ (x - self.xa)
-        print('     Cost function: %.2f' % (cost_obs + cost_emi))
-        return cost_obs + cost_emi
+
+        # Calculate the total cost, print out information on the cost, and
+        # return the total cost function value
+        cost = cost_obs + cost_emi
+        print('     Cost function: %.2f (Emissions: %.2f, Observations: %.2f)'
+              % (cost, cost_emi, cost_obs))
+        return cost
 
     def solve_inversion(self):
+        '''
+        Calculate the solution to an analytic Bayesian inversion for the
+        given Inversion object. The solution includes the posterior state
+        vector (xhat), the posterior error covariance matrix (shat), and
+        the averaging kernel (A). The function prints out progress statements
+        and information about the posterior solution, including the value
+        of the cost function at the prior and posterior, the number of
+        negative state vector elements in the posterior solution, and the
+        DOFS of the posterior solution.
+        '''
         print('... Solving inversion ...')
+
+        # We use the inverse of both the prior and observational
+        # error covariance matrices, so we save those as separate variables.
+        # Here we convert the variance vectors into diagonal covariance
+        # matrices. We also apply the regularization factor rf to the
+        # observational error covariance.
+        # Note: This would change if error variances were redefined as
+        # covariance matrices
         so_inv = diags(self.rf/self.so_vec)
         sa_inv = diags(1/self.sa_vec)
 
