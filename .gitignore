@@ -3,9 +3,12 @@ archive/
 20191007/
 
 # Don't track .DS_Store
-paper/.DS_Store
-run_dir/.DS_Store
+*/.DS_Store
 .DS_Store
+
+# Don't track weird Mac objects
+~*
+*/~*
 
 # Don't track ipynb checkpoints
 .ipynb_checkpoints/
