@@ -175,7 +175,6 @@ est1_ms = est0.update_jacobian_ms(true.k, clusters_plot)
 #############################
 ### FIGURE 00: FLOW CHART ###
 #############################
-
 # Original dimension
 # fig00a, ax = est0.plot_multiscale_grid(clusters_plot,
 #                                        colors='0.5', zorder=3,
@@ -197,54 +196,17 @@ est1_ms = est0.update_jacobian_ms(true.k, clusters_plot)
 # ax.outline_patch.set_visible(False)
 # fp.save_fig(fig00b, loc=plots, name='fig00b_dimn_rankk')
 
-fig00c = plt.figure()
-ax = fig00c.add_axes([0, 0, 1, 1], projection='3d')
-# proj_ax = plt.figure().add_axes([0, 0, 1, 1], projection=ccrs.PlateCarree())
-# ax.projection = proj_ax.projection
-
-# concat = lambda iterable: list(itertools.chain.from_iterable(iterable))
-# target_projection = ccrs.PlateCarree()
-# feature = cartopy.feature.NaturalEarthFeature('physical', 'land', '110m')
-# geoms = feature.geometries()
-# geoms = [target_projection.project_geometry(geom, feature.crs)
-#          for geom in geoms]
-# paths = concat(geos_to_path(geom) for geom in geoms)
-# polys = concat(path.to_polygons() for path in paths)
-
-cmap = fp.cmap_trans_center('RdBu_r')
-norm = colors.Normalize(vmin=-0.1, vmax=0.1)
-for i in range(1):
-    data = true.match_data_to_clusters(true.evecs[:, i], clusters_plot,
-                                       default_value=0)
-    x, y = np.meshgrid(data.lat, data.lon)
-    colors = cmap(norm(data.values))
-    z = np.zeros_like(x) + i
-    # cs = proj_ax.pcolormesh(x, y, z,
-    #                           transform=ccrs.PlateCarree(),
-    #                           facecolors=colors, snap=True, zorder=0)
-    fig, proj_ax, c = true.plot_state(('evecs', i), clusters_plot,
-                                      title='', cbar=False, cmap='RdBu_r',
-                                      vmin=-0.1, vmax=0.1,
-                                      default_value=0,
-                                      map_kwargs={'draw_labels' : False})
-    ax.projection = proj_ax.projection
-    cs = ax.pcolormesh(y, x, z,
-                       # transform=ccrs.PlateCarree(),
-                       # facecolors=colors,
-                       cmap='RdBu_r', vmin=-0.1, vmax=0.1,
-                       snap=True, zorder=0)
-
-    # add map
-    # clip_geom = proj_ax._get_extent_geom().buffer(0)
-    fp.add_feature3d(ax, cartopy.feature.OCEAN, zs=i)
-    fp.add_feature3d(ax, cartopy.feature.LAND, zs=i)
-    fp.add_feature3d(ax, cartopy.feature.COASTLINE, zs=i)
-
-ax.set_xlim(clusters_plot.lon.min(), clusters_plot.lon.max())
-ax.set_ylim(clusters_plot.lat.min(), clusters_plot.lat.max())
-ax.set_zlim(bottom=0, top=3.5)
-fp.save_fig(fig00c, loc=plots, name='fig00c_dimk_rankk')
-
+# # Reduced rank and dimension (not aggregate)
+# for i in range(3):
+#     fig00c, ax, c = true.plot_state(('evecs', i), clusters_plot,
+#                                     title='', cbar=False, cmap='RdBu_r',
+#                                     vmin=-0.1, vmax=0.1,
+#                                     default_value=0,
+#                                     map_kwargs={'draw_labels' : False})
+#     ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=2)
+#     ax.coastlines(color='grey', zorder=4)
+#     ax.outline_patch.set_visible(False)
+#     fp.save_fig(fig00c, loc=plots, name='fig00c_evec' + str(i))
 
 # # Reduced dimension (aggregate)
 # fig00d, ax = est1_ms.plot_multiscale_grid(clusters_plot,
@@ -254,7 +216,6 @@ fp.save_fig(fig00c, loc=plots, name='fig00c_dimk_rankk')
 # ax.coastlines(color='grey', zorder=5)
 # ax.outline_patch.set_visible(False)
 # fp.save_fig(fig00d, loc=plots, name='fig00d_dimk_rankk_ms')
-
 
 #####################################
 ### FIGURE 01: GOSAT OBSERVATIONS ###
@@ -366,7 +327,7 @@ fp.save_fig(fig00c, loc=plots, name='fig00c_dimk_rankk')
 ########################################
 # cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
 # fig05, ax, c = true.plot_state('dofs', clusters_plot,
-#                                **{'title' : 'True Averaging Kernel',
+#                                **{'title' : 'Averaging Kernel',
 #                                   'cmap' : plasma_trans,
 #                                   'vmin' : 0,
 #                                   'vmax' : 1,
@@ -514,9 +475,9 @@ fp.save_fig(fig00c, loc=plots, name='fig00c_dimk_rankk')
 #               bbox_inches='tight', dpi=300)
 # print('Saved fig18_est2_f_eigenvectors.png')
 
-#####################################
-## FIGURE 21: EST2 POSTERIOR MEAN ###
-#####################################
+######################################
+### FIGURE 21: EST2 POSTERIOR MEAN ###
+######################################
 # cbar_kwargs = {'ticks' : np.arange(-1, 4, 1),
 #                'title' : 'Scaling Factors'}
 # fig21, ax, c = est2.plot_state('xhat',
@@ -532,9 +493,9 @@ fp.save_fig(fig00c, loc=plots, name='fig00c_dimk_rankk')
 #               bbox_inches='tight', dpi=300)
 # print('Saved fig21_true_posterior_mean.png')
 
-#######################################
-## FIGURE 22: EST2 AVERAGING KERNEL ###
-#######################################
+########################################
+### FIGURE 22: EST2 AVERAGING KERNEL ###
+########################################
 # cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
 # fig22, ax, c = est2.plot_state('dofs', clusters_plot,
 #                                **{'title' : 'Estimated Averaging Kernel',
@@ -550,9 +511,9 @@ fp.save_fig(fig00c, loc=plots, name='fig00c_dimk_rankk')
 #               bbox_inches='tight', dpi=300)
 # print('Saved fig22_est2_averaging_kernel.png')
 
-##################################
-## FIGURE 22: DETAILED SPECTRA ###
-##################################
+########################################
+### FIGURE 23 - 26: DETAILED SPECTRA ###
+########################################
 # fig23, ax = true.plot_info_frac(label='True',
 #                                 color=fp.color(0),
 #                                 text=False)
@@ -658,3 +619,34 @@ fp.save_fig(fig00c, loc=plots, name='fig00c_dimk_rankk')
 # # fig25.savefig(join(plots, 'fig25_est1_spectra.png'),
 # #               bbox_inches='tight', dpi=300)
 # # print('Saved fig25_est1_spectra.png')
+
+
+######################################
+### FIGURE 27: SAMPLE EIGENVECTORS ###
+######################################
+# rows = 2
+# cols = 1
+# plot_data = [('evecs', i) for i in range(max(rows, cols))]
+# fig27, ax, c = true.plot_state_grid(plot_data, rows=rows, cols=cols,
+#                                     clusters_plot=clusters_plot, cbar=False,
+#                                     vmin=-0.1, vmax=0.1, cmap='RdBu_r',
+#                                     title='',
+#                                     map_kwargs={'draw_labels' : False})
+# cax = fp.add_cax(fig27, ax)
+# cbar = fig27.colorbar(c, cax=cax, ticks=[-0.1, 0, 0.1])
+# cbar = fp.format_cbar(cbar, 'Eigenvector Value')
+# plt.subplots_adjust(hspace=0.005, wspace=0.005)
+# fp.save_fig(fig27, plots, 'fig27_true_eigenvectors')
+
+#########################################
+### FIGURE 28: R2 AND DOFS COMPARISON ###
+#########################################
+
+##################################
+### FIGURE 29: MULTISCALE GRID ###
+##################################
+fig29, ax = est1_ms.plot_multiscale_grid(clusters_plot,
+                                          colors='0.5', zorder=3,
+                                          title='Initial Multiscale Grid (n=200)')
+fp.save_fig(fig29, loc=plots, name='fig29_est1_ms_grid')
+

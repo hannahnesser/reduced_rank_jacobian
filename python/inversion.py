@@ -28,7 +28,6 @@ import format_plots as fp
 
 # Figure sizes
 SCALE = fp.SCALE
-# BASE_FIG_SIZE = 6
 BASE_WIDTH = fp.BASE_WIDTH
 BASE_HEIGHT = fp.BASE_HEIGHT
 
@@ -50,8 +49,73 @@ rcParams['font.size'] = LABEL_FONTSIZE*SCALE
 rcParams['text.usetex'] = True
 
 class Inversion:
-    def __init__(self, k, xa, sa_vec, y, y_base, so_vec):
+'''
+This class creates an inversion object that contains the quantities
+ necessary for conducting an analytic inversion. It also defines the
+following functions:
+    calculate_c             Calculate the constant in y = Kx + c
+    obs_mod_diff            Calculate the difference between modeled
+                            observations and observations (y - Kx)
+    cost_func               Calculate the cost function for a given x
+    solve_inversion         Solve the analytic inversion, inclduing the
+                            posterior emissions, error, and information
+                            content
+It also defines the following plotting functions:
+    plot_state              Plot a state vector on an emissions grid
+    plot_state_grid         Plot multiple state vectors on multiple
+                            emissions grids
+    plot_multiscale_grid    Plot the grid for a reduced dimension,
+                            multiscale emissions state vector
+'''
+    def __init__(self, k, xa, sa_vec, y, y_base, so_vec,
+                 rf=1, latres=1, lonres=1.25):
+        '''
+        Define an inversion object with the following required
+        inputs:
+            k               The Jacobian matrix for the forward model,
+                            K = dy/dx, which represents the sensitivity of the
+                            simulated observations to each element of the
+                            state vector
+            xa              The prior for the state vector
+            sa_vec          The prior error variances as a vector. This class
+                            is not currently written to accept error
+                            covariances (such a change would be simple to
+                            implement).
+            y               The observations
+            y_base          The simulated observations generated from the prior
+                            state vector
+            so_vec          The observational error variances as a vector,
+                            including errors from the forward model and the
+                            observations. This class is not currently written
+                            to accept error covariances, though such a change
+                            would be simple to implement
+
+        The object also accepts the following inputs:
+            rf              A regularization factor gamma defined in the cost
+                            function as
+                                J(x) = (x-xa)T Sa (x-xa) + rf(y-Kx)T So (y-Kx).
+                            The regularization factor changes the weighting of
+                            the observational term relative to the prior term.
+                            The rf is functionally equivalent to dividing the
+                            observational error variances by rf.
+            latres          The latitudinal resolution of the state vector
+            lonres          The longitudinal resolution of the state vector
+
+        The object then defines the following:
+            nstate          The dimension of the state vector
+            nobs            The dimension of the observation vector
+            state_vector    A vector containing an index for each state vector
+                            element (necessary for multiscale grid methods).
+            c               The constant defined as y = Kxa + c
+            xhat            Empty, held for the posterior state vector
+            shat            Empty, held for the posterior error
+            a               Empty, held for the averaging kernel, a measure
+                            of the information content of the inverse system
+            y_out           Empty, the updated simulated observations, defined
+                            as y = Kxhat + c
+        '''
         print('... Initializing inversion object ...')
+
         # Check that the data are all the same types
         assert all(isinstance(z, np.ndarray)
                    for z in [k, xa, sa_vec, y, so_vec]), \
@@ -60,8 +124,8 @@ class Inversion:
         # Define the state and observational dimensions
         self.nstate = k.shape[1]
         self.nobs = k.shape[0]
-        self.latres = 1
-        self.lonres = 1.25
+        self.latres = latres
+        self.lonres = lonres
         self.state_vector = np.arange(1, self.nstate+1, 1)
 
         # Check whether all inputs have the right dimensions
@@ -91,7 +155,7 @@ class Inversion:
         self.calculate_c()
 
         # Create space for a regularization factor.
-        self.rf = 1
+        self.rf = rf
 
         # Now create some holding spaces for values that may be filled
         # in the course of solving the inversion.
@@ -108,9 +172,16 @@ class Inversion:
     ####################################
 
     def calculate_c(self):
+        '''
+        Calculate c for the forward model, defined as ybase = Kxa + c.
+        Save c as an element of the object.
+        '''
         self.c = self.y_base - self.k @ self.xa
 
     def obs_mod_diff(self, x):
+        '''
+        Calculate the
+        '''
         return self.y - (self.k @ x + self.c)
 
     def cost_func(self, x):
@@ -303,7 +374,7 @@ class Inversion:
             fig, axis, c = self.plot_state(attributes[i], clusters_plot,
                                            cbar=False, **kw)
         if cbar:
-            cbar_title = fp.format_cbar(cb, cbar_title)
+            cbar_title = cbar_kwargs.pop('title', '')
             c = fig.colorbar(c, cax=cax, **cbar_kwargs)
             c = fp.format_cbar(c, cbar_title)
 

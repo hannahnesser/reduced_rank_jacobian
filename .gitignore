@@ -2,6 +2,14 @@
 archive/
 20191007/
 
+# Don't track .DS_Store
+paper/.DS_Store
+run_dir/.DS_Store
+.DS_Store
+
+# Don't track ipynb checkpoints
+.ipynb_checkpoints/
+
 # Don't track these large files
 20191007.zip
 pph.csv
