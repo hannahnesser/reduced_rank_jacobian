@@ -48,7 +48,6 @@ rcParams['font.family'] = 'serif'
 rcParams['font.size'] = LABEL_FONTSIZE*SCALE
 rcParams['text.usetex'] = True
 
-class Inversion:
 '''
 This class creates an inversion object that contains the quantities
  necessary for conducting an analytic inversion. It also defines the
@@ -67,6 +66,8 @@ It also defines the following plotting functions:
     plot_multiscale_grid    Plot the grid for a reduced dimension,
                             multiscale emissions state vector
 '''
+
+class Inversion:
     def __init__(self, k, xa, sa_vec, y, y_base, so_vec,
                  rf=1, latres=1, lonres=1.25):
         '''
@@ -348,9 +349,14 @@ It also defines the following plotting functions:
 
         kw['title'] = kw.get('title', attribute_str)
 
-        # Force the data to have dimension equal to the state dimension
-        assert data.shape[0] == self.nstate, \
-               'Dimension mismatch: Data does not match state dimension.'
+        # Removing this for the multiscale grid instance, when
+        # the plotted data is native resolution and the
+        # state vector dimension is not
+        # # Force the data to have dimension equal to the state dimension
+        # err_str = 'Dimension mismatch: Data does not match state dimension.'
+        # err_data = '(data.shape[0] = %d, self.nstate = %d)' \
+        #            % (data.shape[0], self.nstate)
+        # assert data.shape[0] == self.nstate, err_str + err_data
 
         # Match the data to lat/lon data
         data = self.match_data_to_clusters(data, clusters_plot, default_value)
@@ -635,8 +641,13 @@ class ReducedRankInversion(Inversion):
     ### PLOTTING FUNCTIONS ###
     ##########################
 
-    def plot_info_frac(self, **kw):
-        fig, ax, kw = fp.get_figax(aspect=1.75, kw=kw)
+    def plot_info_frac(self, aspect=1.75, relative=True, **kw):
+        figaxkw = fp.get_figax(aspect=aspect, kw=kw)
+        if len(kw) > 0:
+            fig, ax, kw = figaxkw
+        else:
+            fig, ax = figaxkw
+
         label = kw.pop('label', '')
         color = kw.pop('color', plt.cm.get_cmap('inferno')(5))
         ls = kw.pop('ls', '-')
@@ -800,7 +811,7 @@ class ReducedRankJacobian(ReducedRankInversion):
 
 
     #######################################
-    ### REDUCED RANK JACOBIAN FUNCTIONS ###
+    ### REDUCED DIMENSION JACOBIAN FUNCTIONS ###
     #######################################
     # def create_aggregate_cells_kmeans():
 
@@ -868,16 +879,20 @@ class ReducedRankJacobian(ReducedRankInversion):
 
     def merge_cells_kmeans(self, label_idx, clusters_plot, cluster_size):
         labels = np.zeros(self.nstate)
-        labels[label_idx] = label_idx
+        labels[label_idx] = label_idx + 1
+        # the +1 here is countered by a -1 later--this is a fix for
+        # pythonic indexing
         labels = self.match_data_to_clusters(labels,
                                                clusters_plot)
         labels = labels.to_dataframe('labels').reset_index()
         labels = labels[labels['labels'] > 0]
+        labels['labels'] -= 1
 
         # Now do kmeans clustering
         n_clusters = int(len(label_idx)/cluster_size)
-        labels_new = KMeans(n_clusters=n_clusters).fit(labels[['lat',
-                                                              'lon']])
+        labels_new = KMeans(n_clusters=n_clusters,
+                            random_state=0)
+        labels_new = labels_new.fit(labels[['lat', 'lon']])
 
         # Print out some information
         label_stats = np.unique(labels_new.labels_, return_counts=True)
@@ -885,6 +900,9 @@ class ReducedRankJacobian(ReducedRankInversion):
         print('Cluster size: %d' % cluster_size)
         print('Maximum number of grid boxes in a cluster: %d' \
               % max(label_stats[1]))
+        print('Average number of grid boxes in a cluster: %.2f' \
+              % np.mean(label_stats[1]))
+        print('...')
 
         # save the information
         labels = labels.assign(new_labels=labels_new.labels_+1)
@@ -895,37 +913,62 @@ class ReducedRankJacobian(ReducedRankInversion):
 
     def aggregate_cells_kmeans(self, clusters_plot,
                                n_cells, n_cluster_size=None):
-        # Create a new vector that will contain the updated state
-        # vector indices, with 0s elsewhere
-        new_sv = np.zeros(self.nstate)
-
+        print('... Generating multiscale grid ...')
         # Get the indices associated with the most significant
         # grid boxes
-        # sig_idx = significance.argsort()[::-1]
         sig_idx = self.dofs.argsort()[::-1]
 
-        # Iterate through n_cells
-        n_cells = np.append(0, n_cells)
-        nidx = np.cumsum(n_cells)
-        for i, n in enumerate(n_cells[1:]):
-            # get cluster size
-            if n_cluster_size is None:
-                cluster_size = i+1
-            else:
-                cluster_size = n_cluster_size[i]
+        # If first aggregation
+        if len(self.state_vector) == self.nstate:
+            new_sv = np.ones(len(self.state_vector))
 
-            # get the indices of interest
-            sub_sig_idx = sig_idx[nidx[i]:nidx[i+1]]
+            # Iterate through n_cells
+            n_cells = np.append(0, n_cells)
+            nidx = np.cumsum(n_cells)
+            for i, n in enumerate(n_cells[1:]):
+                # get cluster size
+                if n_cluster_size is None:
+                    cluster_size = i+2
+                else:
+                    cluster_size = n_cluster_size[i]
 
-            new_labels = self.merge_cells_kmeans(sub_sig_idx,
-                                                 clusters_plot,
-                                                 cluster_size)
+                # get the indices of interest
+                sub_sig_idx = sig_idx[nidx[i]:nidx[i+1]]
 
-            new_sv[new_labels['labels']] = new_labels['new_labels']+new_sv.max()
+                new_labels = self.merge_cells_kmeans(sub_sig_idx,
+                                                     clusters_plot,
+                                                     cluster_size)
 
+                new_sv[new_labels['labels']] = new_labels['new_labels']+new_sv.max()
+                added_model_runs = len(np.unique(new_sv))
+
+        # If second aggregation (i.e. disaggregation)
+        else:
+            new_sv = copy.deepcopy(self.state_vector)
+            count = 0
+            i = 0
+            while count <= n_cells[0]:
+                idx = np.where(sig_idx[i] == self.state_vector)[0]
+                renumber_idx = np.where(sig_idx[i] < self.state_vector)[0]
+                new_sv[renumber_idx] += len(idx) - 1
+                new_sv[idx] = np.arange(new_sv[idx[0]],
+                                        new_sv[idx[0]] + len(idx))
+                count += len(idx) - 1
+                i += 1
+            print('%d cells disaggregated' % (i-1))
+            added_model_runs = count
+            # now renumber
+
+        # if we're at the point of disaggregating cells
+        # take the largest sig_idx[1]
+        # set all indices equal to new, unique values
+        # count the number of new indices
+        # while less than n_cells, continue
         print('Number of state vector elements: %d' \
-              % len(np.unique(new_sv)[1:]))
-        return new_sv
+              % len(np.unique(new_sv)))
+        print('... Complete ...\n')
+
+        return new_sv, added_model_runs
 
     # @staticmethod
     # def check_similarity(old_sv, new_sv):
@@ -944,17 +987,71 @@ class ReducedRankJacobian(ReducedRankInversion):
             p[index, i] = 0.5
         return p
 
-    def calculate_k(self, forward_model, state_vector, k_base):
-        sv_elements = np.unique(state_vector)[1:]
-        for i in sv_elements:
-            index = np.argwhere(state_vector == i).reshape(-1,)
-            dx = np.zeros(self.nstate)
-            dx[index] = 0.5
-            dy = forward_model @ dx
-            ki = dy/(0.5*len(index))
-            ki = np.tile(ki.reshape(-1,1), (1,len(index)))
-            k_base[:,index] = ki
-        return k_base
+    # def calculate_k_ms(self, forward_model, state_vector, k_base):
+    #     # Iterate through the state vector elements
+    #     sv_elements = np.unique(state_vector)[1:]
+    #     for i in sv_elements:
+
+    #         # Locate the location of all native resolution grid boxes
+    #         # corresponding to the state vector element
+    #         index = np.argwhere(state_vector == i).reshape(-1,)
+
+    #         # Create a vector the length of the native resolution
+    #         # state vector and set it equal to 0.5 where we have
+    #         # state vector elements
+    #         dx = np.zeros(self.nstate)
+    #         dx[index] = 0.5
+
+    #         # Run the forward model on those elements
+    #         dy = forward_model @ dx
+    #         ki = dy/(0.5*len(index))
+    #         ki = np.tile(ki.reshape(-1,1), (1,len(index)))
+    #         k_base[:,index] = ki
+    #     return k_base
+
+    # @staticmethod
+    # def add_quad(df):
+    #     return (df**2).sum()**0.5
+
+    # def disaggregate_k_ms(self, nstate_true):
+
+
+    def calculate_k_ms(self, forward_model):
+        k_ms = pd.DataFrame(forward_model)
+        k_ms = k_ms.groupby(self.state_vector, axis=1).sum()
+        self.k = np.array(k_ms)
+
+    def calculate_prior_ms(self, xa_abs, sa_vec):
+        xa_abs_ms = pd.DataFrame(xa_abs).groupby(self.state_vector).sum()
+
+        sa_vec_abs = pd.DataFrame(sa_vec*xa_abs)
+        sa_vec_abs_ms = (sa_vec_abs**2).groupby(self.state_vector).sum()**0.5
+        sa_vec_ms = sa_vec_abs_ms/xa_abs_ms
+
+        self.xa_abs = np.array(xa_abs_ms).reshape(-1,)
+        self.xa = np.ones(self.nstate).reshape(-1,)
+        self.sa_vec = np.array(sa_vec_ms).reshape(-1,)
+
+    # def calculate_sa_vec_ms(self):
+    #     # sa_vec_ms = pd.DataFrame(self.sa_vec)
+    #     # sa_vec_ms = (sa_vec_ms**2).groupby(self.state_vector).sum()**0.5
+    #     # self.sa_vec = np.array(sa_vec_ms).reshape(-1,)
+    #     # self.sa_vec = 0.5*np.ones(self.nstate).reshape(-1,)
+    #     sa_vec_abs = pd.DataFrame(self.sa_vec*self.xa_abs)
+    #     sa_vec_abs = (sa_vec_abs**2).groupby(self.state_vector).sum()**0.5
+
+    def calculate_trans_ms(self, nstate_native):
+        gamma = np.zeros((self.nstate, nstate_native))
+        for i in range(self.nstate):
+            cidx = np.where(self.nstate == i )[0]
+            gamma[cidx] = 1
+        try:
+            gamma_star = (self.sa_vec*gamma.T @
+                          inv((gamma @ (self.sa_vec*gamma.T))))
+            return gamma, gamma_star
+        except np.linalg.LinAlgError:
+            print('Singular matrix.')
+            return gamma
 
     def calculate_significance(self,
                                pct_of_info=None, rank=None, prolongation=None):
@@ -965,7 +1062,7 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         return rank, significance
 
-    def update_jacobian_ms(self, forward_model, clusters_plot,
+    def update_jacobian_ms(self, forward_model, xa_abs, sa_vec, clusters_plot,
                            pct_of_info=None, rank=None, snr=None,
                            n_cells=[100, 200],
                            n_cluster_size=[1, 2],
@@ -1015,8 +1112,11 @@ class ReducedRankJacobian(ReducedRankInversion):
                                   y=copy.deepcopy(self.y),
                                   y_base=copy.deepcopy(self.y_base),
                                   so_vec=copy.deepcopy(self.so_vec))
+        new.state_vector = copy.deepcopy(self.state_vector)
+        new.dofs = copy.deepcopy(self.dofs)
         new.model_runs = copy.deepcopy(self.model_runs)
         new.rf = copy.deepcopy(self.rf)
+        _, counts = np.unique(self.state_vector, return_counts=True)
 
         # # Retrieve the prolongation operator associated with
         # # this instance of the Jacobian for the rank specified
@@ -1026,31 +1126,46 @@ class ReducedRankJacobian(ReducedRankInversion):
         # # of squares
         # new.rank, significance = self.calculate_significance(pct_of_info)
 
-
         # If previously optimized, set significance to 0
-        if len(self.perturbed_cells) > 0:
+        # if len(self.perturbed_cells) > 0:
+        if np.any(counts > 1):
             print('Ignoring previously optimized grid cells.')
             # significance[self.perturbed_cells] = 0
-            self.dofs[self.perturbed_cells] = 0
+            new.dofs[counts == 1] = 0
 
         # We need the new state vector first. This gives us the
         # clusterings of the base resolution state vector
         # elements as dictated by n_cells and n_cluster_size.
-        new.state_vector = self.aggregate_cells_kmeans(clusters_plot,
+        new.state_vector, new_runs = new.aggregate_cells_kmeans(clusters_plot,
                                                        n_cells=n_cells,
-                                                       n_cluster_size=n_cluster_size)
+                                                       n_cluster_size=  n_cluster_size)
+        new.model_runs += new_runs
 
-        # We calculate the number of model runs.
-        new.model_runs += len(np.unique(new.state_vector)[1:])
+        # Get the transformations that will allow us to reduce
+        # and restore dimension
+        # gamma, gamma_star = self.calculate_trans_ms(self.nstate)
 
-        # Find the individual grid cells that are perturbed
-        counts = np.unique(new.state_vector, return_counts=True)
-        new_perturbed_cells = counts[0][counts[1] == 1]
-        new.perturbed_cells = np.append(self.perturbed_cells,
-                                        new_perturbed_cells).astype(int)
+        # We calculate the number of model runs and the counts of
+        # each cluster
+        # old_elements = np.unique(self.state_vector)
+        elements, counts = np.unique(new.state_vector, return_counts=True)
+        # if new.model_runs == 0:
+        #     new.model_runs = len(elements)
+        # else:
+        #     new.model_runs += (len(elements) - len(old_elements))
 
         # # Now update the Jacobian
-        new.k = self.calculate_k(forward_model, new.state_vector, new.k)
+        # new.k = self.calculate_k(forward_model, new.state_vector, new.k)
+        new.nstate = len(elements)
+        new.calculate_k_ms(forward_model)
+        new.calculate_prior_ms(xa_abs=xa_abs, sa_vec=sa_vec)
+
+        # check gamma and gamma star definitions
+        # ktest = forward_model @ gamma
+        # print(ktest ==  new.k)
+
+        # Adjust the rf
+        new.rf = self.rf*new.nstate/self.nstate
 
         # Update the value of c in the new instance
         new.calculate_c()
@@ -1060,6 +1175,23 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         # And solve the inversion
         new.solve_inversion()
+
+        # # Adjust the clusters_plot
+        # clusters_plot = new.match_data_to_clusters(new.state_vector,
+        #                                            clusters_plot,
+        #                                            default_value=0)
+
+        # And save a long xhat/shat/avker (start by saving them as
+        # an unphysical value so that we can check for errors)
+
+        new.xhat_long = 99*np.ones(len(new.state_vector))
+        new.dofs_long = 99*np.ones(len(new.state_vector))
+        for i in range(1, new.nstate + 1):
+            idx = np.where(new.state_vector == i)[0]
+            new.xhat_long[idx] = new.xhat[i - 1]
+            new.dofs_long[idx] = new.dofs[i - 1]
+
+        print('NUMBER OF MODEL RUNS : %d' % new.model_runs)
 
         return new
 
@@ -1156,13 +1288,13 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         # set the font sizes differently
         title_kwargs = {'fontsize' : SUBTITLE_FONTSIZE*SCALE,
-                        'y' : 1}
+                        'y' : 1.05}
         label_kwargs = {'labelpad' : LABEL_PAD}
 
         fig, ax = fp.get_figax(rows=2, cols=2)
         fig, ax[0,0], c = true.plot_comparison('k', self.k, cbar=False,
                                              **{'figax' : [fig, ax[0,0]],
-                                                'title' : 'Jacobian',
+                                                'title' : 'Jacobian Matrix\nElements',
                                                 'xlabel' : '',
                                                 'title_kwargs' : title_kwargs,
                                                 'label_kwargs' : label_kwargs})
@@ -1183,7 +1315,7 @@ class ReducedRankJacobian(ReducedRankInversion):
                                                'label_kwargs' : label_kwargs})
         fig, ax[1,1], c = true.plot_comparison('dofs', self.dofs, cbar=False,
                                             **{'figax' : [fig, ax[1,1]],
-                                               'title' : 'Averaging Kernel',
+                                               'title' : 'Averaging Kernel\nSensitivities',
                                                'title_kwargs' : title_kwargs,
                                                'ylabel' : '',
                                                'label_kwargs' : label_kwargs,
@@ -1193,7 +1325,7 @@ class ReducedRankJacobian(ReducedRankInversion):
         cbar = fig.colorbar(c, cax=cax)
         cbar = fp.format_cbar(cbar, **{'cbar_title' : 'Count'})
 
-        plt.subplots_adjust(hspace=0.3)
+        plt.subplots_adjust(hspace=0.5)
 
         return fig, ax
 

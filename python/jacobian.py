@@ -1,7 +1,7 @@
 import yaml
 import xarray as xr
 import pandas as pd
-import numpy as np 
+import numpy as np
 from os import remove, listdir
 from os.path import isfile, isdir, join
 import tqdm
@@ -46,7 +46,7 @@ def get_delta_obs(obs, clusters_mapping=None):
 
     # Once we have delta_obs, we want to eliminate those observations that
     # aren't effected by perturbations
-    # (We won't worry about altering the state vector dimension--this 
+    # (We won't worry about altering the state vector dimension--this
     # occurs in the reduce_SV_elements routine.)
     delta_obs = delta_obs.where(delta_obs.sum(dim='NSV') > 0, drop=True)
 
@@ -57,7 +57,7 @@ def get_delta_obs(obs, clusters_mapping=None):
         # n_clust = clusters_map.shape[0] #Account for 0s
         # grouping_factor = len(delta_obs.coords['NSV'])/n_clust
         # if grouping_factor == int(grouping_factor):
-        #     if grouping_factor > 1: # if 
+        #     if grouping_factor > 1: # if
 
         delta_obs_df = delta_obs.to_dataframe(name='delta_obs').reset_index()
         # since this is at the highest resolution
@@ -69,7 +69,7 @@ def get_delta_obs(obs, clusters_mapping=None):
         # Sum
         delta_obs_df = delta_obs_df.groupby(['Nobs', '2']).sum()['delta_obs'].reset_index()
 
-        # Create an xarray 
+        # Create an xarray
         delta_obs_df = delta_obs_df.rename(columns={'2' : 'NSV'})
         delta_obs = delta_obs_df.set_index(['Nobs', 'NSV']).to_xarray()
         delta_obs = delta_obs['delta_obs']
@@ -92,9 +92,9 @@ def load_delta_obs(obs_loc):
         delta_obs = xr.DataArray(delta_obs, dims=('Nobs', 'NSV'))
 
     elif isdir(obs_loc):
-        # This function will calculate an m x n matrix. The ith column represents 
+        # This function will calculate an m x n matrix. The ith column represents
         # the difference between the ith perturbation run and the base run.
-        runs = [d for d in listdir(obs_loc) 
+        runs = [d for d in listdir(obs_loc)
                 if isdir(obs_loc + '/' + d) & (len(d)==11)]
         runs.sort()
 
@@ -154,7 +154,7 @@ def get_emis_frac(emis_loc, clusters1, clusters2):
 
 def get_delta_emis(clusters_long, emis_loc=None, relative=False):
     if (emis_loc is not None) & (~relative):
-        emis = load_emis(emis_loc)
+        emis = get_emis(emis_loc)
 
         # Join in the long clusters file
         emis = emis.to_dataset(name='emis')
@@ -167,7 +167,7 @@ def get_delta_emis(clusters_long, emis_loc=None, relative=False):
         # Change to dataarray
         delta_emis = delta_emis['emis']
 
-    elif (emis_loc is None) & relative: 
+    elif (emis_loc is None) & relative:
         SV_elems = np.unique(clusters_long)[1:]
         delta_emis = 0.5*np.ones(len(SV_elems))
         delta_emis = xr.DataArray(delta_emis, dims=('NSV'), coords={'NSV' : SV_elems})
@@ -178,7 +178,7 @@ def get_delta_emis(clusters_long, emis_loc=None, relative=False):
 
     return delta_emis
 
-def load_emis(emis_loc):
+def get_emis(emis_loc):
     emis = xr.open_dataset(emis_loc)
 
     # Take only the first level
@@ -195,14 +195,38 @@ def load_emis(emis_loc):
 
     return emis
 
-def get_error_emis(error_emis_loc, clusters_long):
+def get_error_emis(error_emis_loc, emis_loc, clusters_long):
+    # Load absolute emissions
+    xa_abs = get_emis(emis_loc)
+    xa_abs = xa_abs.to_dataset(name='emis')
+
     sa = xr.open_dataset(error_emis_loc)['data']
-    sa['NSV'] = clusters_long
 
-    sa_vec = sa.groupby('NSV').apply(add_quadrature)
+    # Convert to absolute
+    sa_abs = sa*xa_abs
+    sa_abs['NSV'] = clusters_long
+
+    # Group by NSV and add in quadrature
+    sa_vec = sa_abs.groupby('NSV').apply(add_quadrature)
     sa_vec = sa_vec.where(sa_vec.coords['NSV'] != 0, drop=True)
+    sa_vec = sa_vec['emis']
 
+    # Make relative: import absolute emisssions
+    xa_abs['NSV'] = clusters_long
+    xa_abs = xa_abs.groupby('NSV').sum(xr.ALL_DIMS)
+    xa_abs = xa_abs.where(xa_abs.NSV > 0, drop=True)
+    xa_abs = xa_abs['emis']
+    # sa_vec /= xa_abs
+
+    # Make relative
+    sa_vec /= xa_abs
+
+    # And set a threshold
     sa_vec.values[sa_vec >= 0.5] = 0.5
+
+    # Sigh just set them all to 50% because we can't actually
+    # add relative errors in quadrature, silly.
+    # sa_vec.values = 0.5*np.ones(len(sa_vec))
 
     sa_vec = sa_vec**2 # get variances from errors
 
@@ -221,9 +245,19 @@ def get_error_obs(error_obs_loc, delta_obs):
 
 def get_prior(clusters_long, emis_loc=None, relative=None):
     if (emis_loc is not None) & (~relative):
-        print('This section of code is incomplete.')
-        sys.exit()
-    
+        xa = get_emis(emis_loc)
+
+        # Join in the long clusters file
+        xa = xa.to_dataset(name='emis')
+        xa['NSV'] = clusters_long
+
+        # Add together emissions in state vector elements
+        xa = xa.groupby('NSV').sum(xr.ALL_DIMS)
+        xa = xa.where(xa.NSV > 0, drop=True)
+
+        # Change to dataarray
+        xa = xa['emis']
+
     elif (emis_loc is None) & relative:
         SV_elems = np.unique(clusters_long)[1:]
         xa = np.ones(len(SV_elems))

@@ -25,7 +25,7 @@ python python/true_jacobian.py $INPUT_DIR $JACOBIAN_STR $RESOLUTION $MODEL_RESPO
 python python/est_jacobian_and_obs.py $INPUT_DIR $JACOBIAN_STR $RESOLUTION $MODEL_EMISSIONS $SAT_OBS
 
 # Make the prior fields
-python python/prior.py $INPUT_DIR $PRIOR_ERROR $RESOLUTION
+python python/prior.py $INPUT_DIR $MODEL_EMISSIONS $PRIOR_ERROR $RESOLUTION
 
 # Runnn
-python k_update_test.py
+# python k_update_test.py
