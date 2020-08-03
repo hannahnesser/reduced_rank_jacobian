@@ -164,10 +164,10 @@ est0.solve_inversion()
 # print('-----------------------\n')
 
 # # And multiscale grid results
-est1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
-                                  clusters_plot,
-                                  n_cells=[98, 300, 500, 1200],
-                                  n_cluster_size=[1, 3, 5, 8])
+# est1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
+#                                   clusters_plot,
+#                                   n_cells=[98, 300, 500, 1200],
+#                                   n_cluster_size=[1, 3, 5, 8])
 # est2_ms = est1_ms.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
 #                                      clusters_plot, n_cells=[100],
 #                                      n_cluster_size=[1])
@@ -202,7 +202,16 @@ est1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
 # np.save(join(inputs, 'dofs_summary'), dofs_summ)
 
 # open summary files
-r2_summ = np.load(join(inputs, 'r2_summary.npy'))
+r2_summ = np.load(join(inputs, 'r2_summary.npy'))# cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
+# fig22, ax, c = est2.plot_state('dofs', clusters_plot,
+#                                **{'title' : 'Estimated Averaging Kernel',
+#                                   'cmap' : plasma_trans,
+#                                   'vmin' : 0,
+#                                   'vmax' : 1,
+#                                   'cbar_kwargs' : cbar_kwargs})
+# ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(true.a),
+#         fontsize=LABEL_FONTSIZE*SCALE,
+#         transform=ax.transAxes)
 nc_summ = np.load(join(inputs, 'nc_summary.npy'))
 nm_summ = np.load(join(inputs, 'nm_summary.npy'))
 dofs_summ = np.load(join(inputs, 'dofs_summary.npy'))
@@ -211,40 +220,63 @@ dofs_summ = np.load(join(inputs, 'dofs_summary.npy'))
 ### SENSITIVITY TESTS: MULTISCALE GRID ###
 ##########################################
 
-# fig, ax = plt.subplots()
-# ax2 = ax.twinx()
+fig, ax = plt.subplots()
+ax2 = ax.twinx()
 
-# n_record = []
-# nstate_record = []
-# dofs_record = []
-# dofs_per_cell_record = []
-# indices = np.concatenate((np.arange(50, 350, 50),
-#                           np.arange(400, 1000, 100),
-#                           np.arange(1200, 2098, 200)))
+# test1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
+#                                    clusters_plot, n_cells=2098,
+#                                    n_cluster_size=[50])
+# test1_ms_k = test1_ms.disaggregate_k_ms()
 
-# for i in indices:
-#     test1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
-#                                        clusters_plot,
-#                                        n_cells=[i],
-#                                        n_cluster_size=[50])
-#     n_record.append(i)
-#     nstate_record.append(test1_ms.nstate)
-#     dofs_record.append(test1_ms.dofs.sum())
-#     dofs_per_cell_record.append(test1_ms.dofs.sum()/test1_ms.nstate)
+# test2_ms = inv.ReducedRankJacobian(test1_ms_k,
+#                                    xa.values,
+#                                    sa_vec.values,
+#                                    y.values,
+#                                    y_base.values,
+#                                    so_vec.values)
+# test2_ms.xa_abs = xa_abs *1e3
+# test2_ms.rf = RF
+# test2_ms.edecomp()
+# test2_ms.solve_inversion()
 
-# expected_DOFS = est0.dofs.sum()*np.array(nstate_record)/est0.nstate
-# # f_expected_DOFS = np.array(dofs_record)/expected_DOFS
-# # print(f_expected_DOFS/np.array(dofs_per_cell_record))
-# # print(np.array(dofs_per_cell_record)/f_expected_DOFS)
+# test2_ms.full_analysis(true, clusters_plot)
 
-# # normalize
-# dofs_per_cell_norm = np.array(dofs_per_cell_record)/max(dofs_per_cell_record)
-# f_dofs_norm = np.array(dofs_record)/np.max(expected_DOFS)
+# plt.show()
 
-# ax.plot(n_record, dofs_per_cell_norm, c='red')
-# ax2.plot(n_record,
-#          f_dofs_norm + dofs_per_cell_norm,
-#          c='red', ls=':')
+n_record = []
+nstate_record = []
+dofs_record = []
+dofs_per_cell_record = []
+indices = np.concatenate((np.arange(10, 200, 10),
+                          np.arange(200, 500, 50),
+                          np.arange(500, 1000, 100),
+                          np.arange(1000, 2098, 200)))
+
+for i in indices:
+    test1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
+                                       clusters_plot,
+                                       n_cells=[i],
+                                       n_cluster_size=[1])
+    n_record.append(i)
+    nstate_record.append(test1_ms.nstate)
+    dofs_record.append(test1_ms.dofs.sum())
+    dofs_per_cell_record.append(test1_ms.dofs.sum()/test1_ms.nstate)
+
+# # expected_DOFS = est0.dofs.sum()*np.array(nstate_record)/est0.nstate
+# # # f_expected_DOFS = np.array(dofs_record)/expected_DOFS
+# # # print(f_expected_DOFS/np.array(dofs_per_cell_record))
+# # # print(np.array(dofs_per_cell_record)/f_expected_DOFS)
+
+# # # normalize
+# # dofs_per_cell_norm = np.array(dofs_per_cell_record)/max(dofs_per_cell_record)
+# # f_dofs_norm = np.array(dofs_record)/np.max(expected_DOFS)
+
+dofs_per_cell_diff = np.diff(dofs_per_cell_record)
+
+ax.plot(n_record, dofs_per_cell_record,
+        c=fp.color(2), lw=3, ls='-')
+ax2.plot(n_record, dofs_per_cell_diff,
+         c=fp.color(2), lw=3, ls=':')
 
 # # n_record = []
 # # dofs_record = []

@@ -920,7 +920,7 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         # If first aggregation
         if len(self.state_vector) == self.nstate:
-            new_sv = np.ones(len(self.state_vector))
+            new_sv = np.zeros(self.nstate)
 
             # Iterate through n_cells
             n_cells = np.append(0, n_cells)
@@ -1013,8 +1013,20 @@ class ReducedRankJacobian(ReducedRankInversion):
     # def add_quad(df):
     #     return (df**2).sum()**0.5
 
-    # def disaggregate_k_ms(self, nstate_true):
+    def disaggregate_k_ms(self):
+        # Create space for the full resolution Jacobian
+        k_fr = np.zeros((self.nobs, len(self.state_vector)))
+        for i in range(1, self.nstate+1):
+            # get the column indices for the new Jacobian
+            cols_idx = np.where(self.state_vector == i)[0]
 
+            # get the Jacobian values
+            ki = self.k[:, i-1]/len(cols_idx)
+            ki = np.tile(ki.reshape(-1, 1), (1, len(cols_idx)))
+
+            # fill in
+            k_fr[:, cols_idx] = ki
+        return k_fr
 
     def calculate_k_ms(self, forward_model):
         k_ms = pd.DataFrame(forward_model)
@@ -1384,4 +1396,28 @@ class ReducedRankJacobian(ReducedRankInversion):
                       rotation=90, ha='center', va='center',
                       transform=ax[1,0].transAxes)
 
-        return fig01, fig02, fig03
+        # fig04
+        cbar_kwargs = {'ticks' : np.arange(-1, 4, 1),
+                       'title' : 'Scaling Factors'}
+        fig04, ax, c = self.plot_state('xhat',
+                                       clusters_plot,
+                                       default_value=1,
+                                       **{'title' : 'Posterior Emissions',
+                                          'cmap' : 'RdBu_r',
+                                          'vmin' : -1,
+                                          'vmax' : 3,
+                                          'cbar_kwargs' : cbar_kwargs})
+
+        # fig05
+        cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
+        fig05, ax, c = self.plot_state('dofs', clusters_plot,
+                                       **{'title' : 'Averaging Kernel',
+                                          'cmap' : fp.cmap_trans('plasma'),
+                                          'vmin' : 0,
+                                          'vmax' : 0.1,#1,
+                                          'cbar_kwargs' : cbar_kwargs})
+        ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(self.a),
+                fontsize=LABEL_FONTSIZE*SCALE,
+                transform=ax.transAxes)
+
+        return fig01, fig02, fig03, fig04, fig05
