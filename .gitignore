@@ -1,6 +1,7 @@
 # Don't track content of these folders
 archive/
 20191007/
+plots*/
 
 # Don't track .DS_Store
 */.DS_Store
@@ -12,6 +13,9 @@ archive/
 
 # Don't track ipynb checkpoints
 .ipynb_checkpoints/
+
+# Don't track the sublime workspace information
+*sublime*
 
 # Don't track these large files
 20191007.zip
