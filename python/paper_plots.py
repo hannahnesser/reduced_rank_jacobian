@@ -8,7 +8,6 @@ import itertools
 sys.path.append('./python/')
 import inversion as inv
 import jacobian as j
-# import inv_plot
 
 import xarray as xr
 import numpy as np
@@ -26,34 +25,29 @@ from scipy.ndimage import zoom
 import cartopy.crs as ccrs
 import cartopy
 from cartopy.mpl.patch import geos_to_path
+
+sys.path.append('../Python/')
 import format_plots as fp
+import config
 
+#########################
+### PLOTTING DEFAULTS ###
+#########################
+
+# rcParams default
+rcParams['font.family'] = 'serif'
+rcParams['font.size'] = config.LABEL_FONTSIZE*config.SCALE
+rcParams['text.usetex'] = True
+
+# Colormaps
 c = plt.cm.get_cmap('inferno', lut=10)
-
 plasma_trans = fp.cmap_trans('plasma')
 plasma_trans_r = fp.cmap_trans('plasma_r')
 
-SCALE = fp.SCALE
-# BASE_FIG_SIZE = 6
-BASE_WIDTH = fp.BASE_WIDTH
-BASE_HEIGHT = fp.BASE_HEIGHT
-
-# Fontsizes
-TITLE_FONTSIZE = fp.TITLE_FONTSIZE
-SUBTITLE_FONTSIZE = fp.SUBTITLE_FONTSIZE
-LABEL_FONTSIZE = fp.LABEL_FONTSIZE
-TICK_FONTSIZE = fp.TICK_FONTSIZE
-
-# Position
-TITLE_LOC = fp.TITLE_LOC
-CBAR_PAD = fp.CBAR_PAD
-LABEL_PAD = fp.LABEL_PAD
-CBAR_LABEL_PAD = fp.CBAR_LABEL_PAD
-
-# Other font details
-rcParams['font.family'] = 'serif'
-rcParams['font.size'] = LABEL_FONTSIZE*SCALE
-rcParams['text.usetex'] = True
+# Small (i.e. non-default) figure settings
+small_fig_kwargs = {'max_width' : config.BASE_WIDTH,
+                    'max_height' : config.BASE_HEIGHT}
+small_map_kwargs = {'draw_labels' : False}
 
 ######################
 ### FILE LOCATIONS ###
@@ -62,6 +56,10 @@ main = '/Users/hannahnesser/Documents/Harvard/Research/Reduced_Rank_Jacobian'
 plots = join(main, 'plots')
 code = join(main, 'python')
 inputs = join(main, 'input')
+
+#----------------------------------------------------------------------------#
+#  Data Processing                                                           #
+#----------------------------------------------------------------------------#
 
 #################
 ### LOAD DATA ###
@@ -144,24 +142,24 @@ est0.solve_inversion()
 #########################
 ### UPDATED ESTIMATES ###
 #########################
-# # First set of updates
-# est1 = est0.update_jacobian(true.k,
-#                             snr=1.25)
+# First set of updates
+est1 = est0.update_jacobian(true.k,
+                            snr=1.25)
 
-# # Second set
-# est2 = est1.update_jacobian(true.k,
-#                             rank=est0.get_rank(pct_of_info=0.975))
+# Second set
+est2 = est1.update_jacobian(true.k,
+                            rank=est0.get_rank(pct_of_info=0.975))
 
-# # Filter
-# mask = np.diag(est2.a) > 0.01
-# # mask = ~np.isclose(est2.xhat, np.ones(est2.nstate), atol=1e-2)
-# est2_f, true_f = est2.filter(true, mask)
+# Filter
+mask = np.diag(est2.a) > 0.01
+# mask = ~np.isclose(est2.xhat, np.ones(est2.nstate), atol=1e-2)
+est2_f, true_f = est2.filter(true, mask)
 
-# print('-----------------------')
-# print('MODEL RUNS: ', est2.model_runs)
-# print('CONSTRAINED CELLS: ', len(est2_f.xhat))
-# print('DOFS: ', np.trace(est2_f.a))
-# print('-----------------------\n')
+print('-----------------------')
+print('MODEL RUNS: ', est2.model_runs)
+print('CONSTRAINED CELLS: ', len(est2_f.xhat))
+print('DOFS: ', np.trace(est2_f.a))
+print('-----------------------\n')
 
 # # And multiscale grid results
 # est1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
@@ -178,13 +176,14 @@ est0.solve_inversion()
 ### SENSITIVITY TESTS: REDUCED RANK ###
 #######################################
 # DON'T RERUN UNLESS ABSOLUTELY NECESSARY
-# n = 40
+# n = 41
 # r2_summ = np.zeros((n, n))
 # nc_summ = np.zeros((n, n))
 # nm_summ = np.zeros((n, n))
 # dofs_summ = np.zeros((n, n))
-# for col, first_update in enumerate(range(25, 1025, 25)):
-#     for row, second_update in enumerate(range(25, 1025, 25)):
+# indices = np.concatenate(([1], np.arange(25, 1025, 25)))
+# for col, first_update in enumerate(indices):
+#     for row, second_update in enumerate(indices):
 #         test1 = est0.update_jacobian(true.k, rank=first_update)
 #         test2 = test1.update_jacobian(true.k, rank=second_update)
 #         mask = np.diag(test2.a) > 0.01
@@ -202,81 +201,78 @@ est0.solve_inversion()
 # np.save(join(inputs, 'dofs_summary'), dofs_summ)
 
 # open summary files
-r2_summ = np.load(join(inputs, 'r2_summary.npy'))# cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
-# fig22, ax, c = est2.plot_state('dofs', clusters_plot,
-#                                **{'title' : 'Estimated Averaging Kernel',
-#                                   'cmap' : plasma_trans,
-#                                   'vmin' : 0,
-#                                   'vmax' : 1,
-#                                   'cbar_kwargs' : cbar_kwargs})
-# ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(true.a),
-#         fontsize=LABEL_FONTSIZE*SCALE,
-#         transform=ax.transAxes)
-nc_summ = np.load(join(inputs, 'nc_summary.npy'))
-nm_summ = np.load(join(inputs, 'nm_summary.npy'))
-dofs_summ = np.load(join(inputs, 'dofs_summary.npy'))
+r2_summ = np.load(join(inputs, 'r2_summary_R3.npy'))
+nc_summ = np.load(join(inputs, 'nc_summary_R3.npy'))
+nm_summ = np.load(join(inputs, 'nm_summary_R3.npy'))
+dofs_summ = np.load(join(inputs, 'dofs_summary_R3.npy'))
 
 ##########################################
 ### SENSITIVITY TESTS: MULTISCALE GRID ###
 ##########################################
 
-fig, ax = plt.subplots()
-ax2 = ax.twinx()
+# fig, ax = plt.subplots(figsize=(20, 4))
+# ax2 = ax.twinx()
 
-# test1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
-#                                    clusters_plot, n_cells=2098,
-#                                    n_cluster_size=[50])
-# test1_ms_k = test1_ms.disaggregate_k_ms()
+# # test1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
+# #                                    clusters_plot, n_cells=2098,
+# #                                    n_cluster_size=[50])
+# # test1_ms_k = test1_ms.disaggregate_k_ms()
 
-# test2_ms = inv.ReducedRankJacobian(test1_ms_k,
-#                                    xa.values,
-#                                    sa_vec.values,
-#                                    y.values,
-#                                    y_base.values,
-#                                    so_vec.values)
-# test2_ms.xa_abs = xa_abs *1e3
-# test2_ms.rf = RF
-# test2_ms.edecomp()
-# test2_ms.solve_inversion()
+# # test2_ms = inv.ReducedRankJacobian(test1_ms_k,
+# #                                    xa.values,
+# #                                    sa_vec.values,
+# #                                    y.values,
+# #                                    y_base.values,
+# #                                    so_vec.values)
+# # test2_ms.xa_abs = xa_abs *1e3
+# # test2_ms.rf = RF
+# # test2_ms.edecomp()
+# # test2_ms.solve_inversion()
 
-# test2_ms.full_analysis(true, clusters_plot)
+# # test2_ms.full_analysis(true, clusters_plot)
+
+# # plt.show()
+
+# n_record = []
+# nstate_record = []
+# dofs_record = []
+# dofs_per_cell_record = []
+# indices = np.concatenate((np.arange(10, 200, 10),
+#                           np.arange(200, 500, 50),
+#                           np.arange(500, 1000, 100),
+#                           np.arange(1000, 2098, 200)))
+
+# for i in indices:
+#     test1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
+#                                        clusters_plot,
+#                                        n_cells=[i],
+#                                        n_cluster_size=[1])
+#     nstate_record.append(test1_ms.nstate)
+#     dofs_record.append(test1_ms.dofs.sum())
+#     dofs_per_cell_record.append(test1_ms.dofs.sum()/test1_ms.nstate)
+
+# dofs_per_cell_diff = np.diff(dofs_per_cell_record)/np.diff(indices)
+# cum_dy = (dofs_per_cell_record - dofs_per_cell_record[0])[1:]
+# cum_dx = (indices - indices[0])[1:]
+# cum_slope = cum_dy/cum_dx
+# cum_slope_diff = np.diff(cum_slope)/np.diff(indices[1:])
+# # threshold = np.where(cum_slope > 0)[0][-1] + 1
+# # threshold = np.where(cum_slope_ diff > 0)[0][0]
+
+# # ax.plot(indices[:threshold+1], dofs_per_cell_record[:threshold+1],
+# #         c=fp.color(2), lw=3, ls='-')
+# # ax.plot(indices[threshold+1:], dofs_per_cell_record[threshold+1:],
+# #         c=fp.color(2), lw=3, ls=':')
+# ax.plot(indices[1:-1] + np.diff(indices[1:])/2,
+#          cum_slope_diff,
+#          c=fp.color(2), lw=3, ls='-')
+# ax.plot(indices[:-1] + np.diff(indices)/2,
+#          dofs_per_cell_diff,
+#          c=fp.color(2), lw=3, ls=':')
+# ax2.plot(indices[1:], cum_dy, c=fp.color(2), lw=3, ls='--')
+# ax2.axhline(0, c='grey', ls=':')
 
 # plt.show()
-
-n_record = []
-nstate_record = []
-dofs_record = []
-dofs_per_cell_record = []
-indices = np.concatenate((np.arange(10, 200, 10),
-                          np.arange(200, 500, 50),
-                          np.arange(500, 1000, 100),
-                          np.arange(1000, 2098, 200)))
-
-for i in indices:
-    test1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
-                                       clusters_plot,
-                                       n_cells=[i],
-                                       n_cluster_size=[1])
-    n_record.append(i)
-    nstate_record.append(test1_ms.nstate)
-    dofs_record.append(test1_ms.dofs.sum())
-    dofs_per_cell_record.append(test1_ms.dofs.sum()/test1_ms.nstate)
-
-# # expected_DOFS = est0.dofs.sum()*np.array(nstate_record)/est0.nstate
-# # # f_expected_DOFS = np.array(dofs_record)/expected_DOFS
-# # # print(f_expected_DOFS/np.array(dofs_per_cell_record))
-# # # print(np.array(dofs_per_cell_record)/f_expected_DOFS)
-
-# # # normalize
-# # dofs_per_cell_norm = np.array(dofs_per_cell_record)/max(dofs_per_cell_record)
-# # f_dofs_norm = np.array(dofs_record)/np.max(expected_DOFS)
-
-dofs_per_cell_diff = np.diff(dofs_per_cell_record)
-
-ax.plot(n_record, dofs_per_cell_record,
-        c=fp.color(2), lw=3, ls='-')
-ax2.plot(n_record, dofs_per_cell_diff,
-         c=fp.color(2), lw=3, ls=':')
 
 # # n_record = []
 # # dofs_record = []
@@ -370,50 +366,53 @@ ax2.plot(n_record, dofs_per_cell_diff,
 
 # plt.show()
 
+#----------------------------------------------------------------------------#
+#  Figures                                                                   #
+#----------------------------------------------------------------------------#
+
 #############################
-### FIGURE 00: FLOW CHART ###
+### FIGURE 01: FLOW CHART ###
 #############################
-# # # Original dimension
-# # fig00a, ax = est0.plot_multiscale_grid(clusters_plot,
-# #                                        colors='0.5', zorder=3,
-# #                                        map_kwargs={'draw_labels' : False})
-# # ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=2)
-# # ax.coastlines(color='grey', zorder=5)
-# # ax.outline_patch.set_visible(False)
-# # fp.save_fig(fig00a, loc=plots, name='fig00a_dimn_rankn')
+def flow_chart_settings(ax):
+    ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=2)
+    ax.coastlines(color='grey', zorder=5)
+    ax.outline_patch.set_visible(False)
+    return ax
 
-# # Reduced rank
-# true.evec_sum = true.evecs[:, :3].sum(axis=1)
-# fig00b, ax, c = true.plot_state('evec_sum', clusters_plot,
-#                                 title='', cbar=False, cmap='RdBu_r',
-#                                 vmin=-0.1, vmax=0.1,
-#                                 default_value=0,
-#                                 map_kwargs={'draw_labels' : False})
-# ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=2)
-# ax.coastlines(color='grey', zorder=4)
-# ax.outline_patch.set_visible(False)
-# fp.save_fig(fig00b, loc=plots, name='fig00b_dimn_rankk')
+# Original dimension
+fig01a, ax = est0.plot_multiscale_grid(clusters_plot, colors='0.5', zorder=3,
+                                       fig_kwargs=small_fig_kwargs,
+                                       map_kwargs=small_map_kwargs)
+ax = flow_chart_settings(ax)
+fp.save_fig(fig01a, loc=plots, name='fig01a_dimn_rankn')
 
-# # Reduced rank and dimension (not aggregate)
-# for i in range(3):
-#     fig00c, ax, c = true.plot_state(('evecs', i), clusters_plot,
-#                                     title='', cbar=False, cmap='RdBu_r',
-#                                     vmin=-0.1, vmax=0.1,
-#                                     default_value=0,
-#                                     map_kwargs={'draw_labels' : False})
-#     ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=2)
-#     ax.coastlines(color='grey', zorder=4)
-#     ax.outline_patch.set_visible(False)
-#     fp.save_fig(fig00c, loc=plots, name='fig00c_evec' + str(i))
+# Reduced rank
+true.evec_sum = true.evecs[:, :3].sum(axis=1)
+fig01b, ax, c = true.plot_state('evec_sum', clusters_plot,
+                                title='', cbar=False,  cmap='RdBu_r',
+                                vmin=-0.1, vmax=0.1, default_value=0,
+                                fig_kwargs=small_fig_kwargs,
+                                map_kwargs=small_map_kwargs)
+ax = flow_chart_settings(ax)
+fp.save_fig(fig01b, loc=plots, name='fig01b_dimn_rankk')
 
-# # Reduced dimension (aggregate)
-# fig00d, ax = est1_ms.plot_multiscale_grid(clusters_plot,
-#                                           colors='0.5', zorder=3,
-#                                           map_kwargs={'draw_labels' : False})
-# ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=2)
-# ax.coastlines(color='grey', zorder=5)
-# ax.outline_patch.set_visible(False)
-# fp.save_fig(fig00d, loc=plots, name='fig00d_dimk_rankk_ms')
+# Reduced rank and dimension (not aggregate)
+for i in range(3):
+    fig01c, ax, c = true.plot_state(('evecs', i), clusters_plot,
+                                    title='', cbar=False, cmap='RdBu_r',
+                                    vmin=-0.1, vmax=0.1,default_value=0,
+                                    fig_kwargs=small_fig_kwargs,
+                                    map_kwargs=small_map_kwargs)
+    ax = flow_chart_settings(ax)
+    fp.save_fig(fig01c, loc=plots, name='fig01c_evec' + str(i))
+
+# Reduced dimension (aggregate)
+fig01d, ax = est1_ms.plot_multiscale_grid(clusters_plot,
+                                          colors='0.5', zorder=3,
+                                          fig_kwargs=small_fig_kwargs,
+                                          map_kwargs=small_map_kwargs)
+ax = flow_chart_settings(ax)
+fp.save_fig(fig01d, loc=plots, name='fig01d_dimk_rankk_ms')
 
 #####################################
 ### FIGURE 01: GOSAT OBSERVATIONS ###
@@ -526,40 +525,32 @@ ax2.plot(n_record, dofs_per_cell_diff,
 ########################################
 ### FIGURE 05: TRUE AVERAGING KERNEL ###
 ########################################
-# cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
-# fig05, ax, c = true.plot_state('dofs', clusters_plot,
-#                                title='Native Resolution Averaging Kernel',
-#                                cmap=plasma_trans,
-#                                vmin=0,
-#                                vmax=1,
-#                                cbar_kwargs=cbar_kwargs,
-#                                map_kwargs={'draw_labels' : False})
-# ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(true.a),
-#         fontsize=LABEL_FONTSIZE*SCALE,
-#         transform=ax.transAxes)
-
-# fig05.savefig(join(plots, 'fig05_true_averaging_kernel.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig05_true_averaging_kernel.png')
+title = 'Native Resolution\nAveraging Kernel Sensitivities'
+cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
+fig05, ax, c = true.plot_state('dofs', clusters_plot, title=title,
+                               cmap=plasma_trans, vmin=0, vmax=1,
+                               fig_kwargs=small_fig_kwargs,
+                               cbar_kwargs=cbar_kwargs,
+                               map_kwargs=small_map_kwargs)
+ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(true.a),
+        fontsize=config.LABEL_FONTSIZE*config.SCALE,
+        transform=ax.transAxes)
+fp.save_fig(fig05, plots, 'fig06_true_averaging_kernel')
 
 ###########################################
 ### FIGURE 06: INITIAL AVERAGING KERNEL ###
 ###########################################
-# cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
-# fig06, ax, c = est0.plot_state('dofs', clusters_plot,
-#                                title='Initial Estimate Averaging Kernel',
-#                                cmap=plasma_trans,
-#                                vmin=0,
-#                                vmax=1,
-#                                cbar_kwargs=cbar_kwargs,
-#                                map_kwargs={'draw_labels' : False})
-# ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(est0.a),
-#         fontsize=LABEL_FONTSIZE*SCALE,
-#         transform=ax.transAxes)
-
-# fig06.savefig(join(plots, 'fig06_est0_averaging_kernel.png'),
-#             bbox_inches='tight', dpi=300)
-# print('Saved fig06_est0_averaging_kernel.png')
+title = 'Initial Estimate\nAveraging Kernel Sensitivities'
+cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
+fig06, ax, c = est0.plot_state('dofs', clusters_plot, title=title,
+                               cmap=plasma_trans, vmin=0, vmax=1,
+                               fig_kwargs=small_fig_kwargs,
+                               cbar_kwargs=cbar_kwargs,
+                               map_kwargs=small_map_kwargs)
+ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(est0.a),
+        fontsize=config.LABEL_FONTSIZE*config.SCALE,
+        transform=ax.transAxes)
+fp.save_fig(fig06, plots, 'fig06_est0_averaging_kernel')
 
 #####################################
 ### FIGURE 07 - 09: EST0 ANALYSIS ###
@@ -618,7 +609,7 @@ ax2.plot(n_record, dofs_per_cell_diff,
 #######################################
 ### FIGURE 16 - 18: EST2_F ANALYSIS ###
 #######################################
-# # fp.SCALE *= 2
+# # config.SCALE *= 2
 # # inv.SCALE *= 2
 # fig16, fig17, fig18 = est2_f.full_analysis(true_f, clusters_plot)
 # # fig17.suptitle('Final Update', fontsize=TITLE_FONTSIZE*SCALE,
@@ -636,7 +627,7 @@ ax2.plot(n_record, dofs_per_cell_diff,
 # fig18.savefig(join(plots, 'fig18_est2_f_eigenvectors.png'),
 #           bbox_inches='tight', dpi=300)
 # print('Saved fig18_est2_f_eigenvectors.png')
-# # fp.SCALE /= 2
+# # config.SCALE /= 2
 # # inv.SCALE /= 2
 
 ############################################
@@ -846,8 +837,7 @@ ax2.plot(n_record, dofs_per_cell_diff,
 ####################################
 ### FIGURE 28: SENSITIVITY TESTS ###
 ####################################
-
-# min_mr = 25
+# min_mr = 0
 # max_mr = 1000
 # increment = 25
 # n = int((max_mr - min_mr)/increment) + 1
@@ -870,7 +860,8 @@ ax2.plot(n_record, dofs_per_cell_diff,
 # # ax = fp.add_title(ax, 'Number of Constrained Grid Cells')
 
 # # cf = ax.contourf(r2_summ, levels=np.linspace(0, 1, 25), vmin=0, vmax=1)
-# cf = ax.contourf(dofs_summ, levels=np.linspace(0, 216, 50),
+# cf = ax.contourf(dofs_summ,
+#                  levels=np.linspace(0, true.dofs.sum(), 50),
 #                  vmin=0, vmax=200, cmap='plasma')
 # # cf = ax.contourf(nc_summ, levels=np.arange(0, 2000, 100),
 # #                  vmin=0, vmax=2000)
@@ -878,7 +869,10 @@ ax2.plot(n_record, dofs_per_cell_diff,
 # locs = [(n/4, n/4),
 #         (n/2, n/2),
 #         (3*n/4, 3*n/4)]
-# cl = ax.contour(nm_summ, levels=3, colors=fp.color(9))
+# # nm_summ[0, :] -= 1
+# # nm_summ[1:, 0] -= 1
+# cl = ax.contour(nm_summ, levels=3, colors=fp.color(3),
+#                 linestyles='dotted')
 # ax.clabel(cl, cl.levels,
 #           inline=True,
 #           manual=locs,
@@ -891,7 +885,8 @@ ax2.plot(n_record, dofs_per_cell_diff,
 #            s=200, marker='*')
 
 # # cbar = fig.colorbar(cf, cax=cax, ticks=np.linspace(0, 1, 6))
-# cbar = fig.colorbar(cf, cax=cax, ticks=np.arange(0, 216, 50))
+# cbar = fig.colorbar(cf, cax=cax,
+#                     ticks=np.arange(0, true.dofs.sum(), 50))
 # # cbar = fig.colorbar(cf, cax=cax, ticks=np.arange(0, 2000, 500))
 
 # # cbar = fp.format_cbar(cbar, r'r$^2$')
@@ -902,13 +897,13 @@ ax2.plot(n_record, dofs_per_cell_diff,
 # ax = fp.add_labels(ax, 'First Update Model Runs', 'Second Update Model Runs')
 
 # # ....This is still hard coded
-# ax.set_xticks(np.arange(3, 39, (39-3)/9))
+# ax.set_xticks(np.arange(4, n, (n-4)/9))
 # ax.set_xticklabels(np.arange(100, 1100, 100), fontsize=15)
-# ax.set_xlim(0, 38)
+# ax.set_xlim(0, n-1)
 
-# ax.set_yticks(np.arange(3, 39, (39-3)/9))
+# ax.set_yticks(np.arange(4, n, (n-4)/9))
 # ax.set_yticklabels(np.arange(100, 1100, 100), fontsize=15)
-# ax.set_ylim(0, 38)
+# ax.set_ylim(0, n-1)
 
 # # fp.save_fig(fig, plots, 'fig28c_r2_comparison')
 # fp.save_fig(fig, plots, 'fig28d_dofs_comparison')

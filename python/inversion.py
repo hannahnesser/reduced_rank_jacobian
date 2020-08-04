@@ -24,28 +24,14 @@ import cartopy.crs as ccrs
 import cartopy
 
 # Import information for plotting in a consistent fashion
+import sys
+sys.path.append('../../Python/')
 import format_plots as fp
-
-# Figure sizes
-SCALE = fp.SCALE
-BASE_WIDTH = fp.BASE_WIDTH
-BASE_HEIGHT = fp.BASE_HEIGHT
-
-# Fontsizes
-TITLE_FONTSIZE = fp.TITLE_FONTSIZE
-SUBTITLE_FONTSIZE = fp.SUBTITLE_FONTSIZE
-LABEL_FONTSIZE = fp.LABEL_FONTSIZE
-TICK_FONTSIZE = fp.TICK_FONTSIZE
-
-# Position
-TITLE_LOC = fp.TITLE_LOC
-CBAR_PAD = fp.CBAR_PAD
-LABEL_PAD = fp.LABEL_PAD
-CBAR_LABEL_PAD = fp.CBAR_LABEL_PAD
+import config
 
 # Other font details
 rcParams['font.family'] = 'serif'
-rcParams['font.size'] = LABEL_FONTSIZE*SCALE
+rcParams['font.size'] = config.LABEL_FONTSIZE*config.SCALE
 rcParams['text.usetex'] = True
 
 '''
@@ -303,13 +289,6 @@ class Inversion:
     @staticmethod
     def plot_state_format(data, default_value=0, cbar=True, **kw):
         # Get kw
-        lat_range = [data.lat.min(), data.lat.max()]
-        lon_range = [data.lon.min(), data.lon.max()]
-        fig, ax, kw = fp.get_figax(maps=True,
-                                   lats=lat_range,
-                                   lons=lon_range,
-                                   kw=kw)
-
         title = kw.pop('title', '')
         kw['cmap'] = kw.get('cmap', 'viridis')
         kw['vmin'] = kw.get('vmin', data.min())
@@ -319,10 +298,22 @@ class Inversion:
         label_kwargs = kw.pop('label_kwargs', {})
         title_kwargs = kw.pop('title_kwargs', {})
         map_kwargs = kw.pop('map_kwargs', {})
+        fig_kwargs = kw.pop('fig_kwargs', {})
 
+        # Get figure
+        lat_range = [data.lat.min(), data.lat.max()]
+        lon_range = [data.lon.min(), data.lon.max()]
+        fig, ax  = fp.get_figax(maps=True, lats=lat_range, lons=lon_range,
+                                **fig_kwargs)
+
+        # Plot data
         c = data.plot(ax=ax, snap=True, **kw)
+
+        # Set limits
         ax.set_xlim(lon_range)
         ax.set_ylim(lat_range)
+
+        # Add title and format map
         ax = fp.add_title(ax, title, **title_kwargs)
         ax = fp.format_map(ax, data.lat, data.lon, **map_kwargs)
 
@@ -661,18 +652,18 @@ class ReducedRankInversion(Inversion):
         ax.plot(frac, label=label, c=color, ls=ls, lw=lw)
 
         if text:
-            ax.scatter(snr_idx, frac[snr_idx], s=10*SCALE, c=color)
+            ax.scatter(snr_idx, frac[snr_idx], s=10*fp.SCALE, c=color)
             ax.text(snr_idx + self.nstate*0.05, frac[snr_idx],
                     r'SNR $\approx$ 1',
-                    ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
+                    ha='left', va='top', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
                     color=color)
             ax.text(snr_idx + self.nstate*0.05, frac[snr_idx] - 0.075,
                     'n = %d' % snr_idx,
-                    ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
+                    ha='left', va='top', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
                     color=color)
             ax.text(snr_idx + self.nstate*0.05, frac[snr_idx] - 0.15,
                     r'$f_{DOFS}$ = %.2f' % frac[snr_idx],
-                    ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
+                    ha='left', va='top', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
                     color=color)
 
         ax = fp.add_legend(ax)
@@ -701,7 +692,7 @@ class ReducedRankInversion(Inversion):
         count = 0
         for k, ydata in compare_data.items():
             ax.scatter(xdata, ydata,
-                       alpha=0.5, s=5*SCALE,
+                       alpha=0.5, s=5*fp.SCALE,
                        c=color(count, cmap=cmap, lut=n))
             count += 1
 
@@ -750,12 +741,12 @@ class ReducedRankInversion(Inversion):
             if r**2 <= 0.99:
                 ax.text(0.05, 0.85,
                         r'R$^2$ = %.2f' % r**2,
-                        fontsize=LABEL_FONTSIZE*SCALE,
+                        fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
                         transform=ax.transAxes)
             else:
                 ax.text(0.05, 0.85,
                         r'R$^2$ $>$ 0.99',
-                        fontsize=LABEL_FONTSIZE*SCALE,
+                        fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
                         transform=ax.transAxes)
 
         if cbar:
@@ -1299,9 +1290,9 @@ class ReducedRankJacobian(ReducedRankInversion):
         self.shat_diag = np.diag(self.shat)
 
         # set the font sizes differently
-        title_kwargs = {'fontsize' : SUBTITLE_FONTSIZE*SCALE,
+        title_kwargs = {'fontsize' : fp.SUBTITLE_FONTSIZE*fp.SCALE,
                         'y' : 1.05}
-        label_kwargs = {'labelpad' : LABEL_PAD}
+        label_kwargs = {'labelpad' : fp.LABEL_PAD}
 
         fig, ax = fp.get_figax(rows=2, cols=2)
         fig, ax[0,0], c = true.plot_comparison('k', self.k, cbar=False,
@@ -1364,7 +1355,7 @@ class ReducedRankJacobian(ReducedRankInversion):
               'vmax' : 0.1,
               'cmap' : 'RdBu_r',
               'add_colorbar' : False,
-              'title_kwargs' : {'fontsize' : SUBTITLE_FONTSIZE*SCALE},
+              'title_kwargs' : {'fontsize' : fp.SUBTITLE_FONTSIZE*fp.SCALE},
               'map_kwargs' : {'draw_labels' : False}}
         cbar_kwargs = {'ticks' : [-0.1, 0, 0.1]}
 
@@ -1389,10 +1380,10 @@ class ReducedRankJacobian(ReducedRankInversion):
         cbar = fp.format_cbar(cbar, **{'cbar_title' : 'Eigenvector Value'})
 
         # Add label
-        ax[0, 0].text(-0.2, 0.5, 'Truth', fontsize=LABEL_FONTSIZE*SCALE,
+        ax[0, 0].text(-0.2, 0.5, 'Truth', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
                       rotation=90, ha='center', va='center',
                       transform=ax[0,0].transAxes)
-        ax[1, 0].text(-0.2, 0.5, 'Estimate', fontsize=LABEL_FONTSIZE*SCALE,
+        ax[1, 0].text(-0.2, 0.5, 'Estimate', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
                       rotation=90, ha='center', va='center',
                       transform=ax[1,0].transAxes)
 
@@ -1417,7 +1408,7 @@ class ReducedRankJacobian(ReducedRankInversion):
                                           'vmax' : 0.1,#1,
                                           'cbar_kwargs' : cbar_kwargs})
         ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(self.a),
-                fontsize=LABEL_FONTSIZE*SCALE,
+                fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
                 transform=ax.transAxes)
 
         return fig01, fig02, fig03, fig04, fig05

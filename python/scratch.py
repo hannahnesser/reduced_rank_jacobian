@@ -1,6 +1,14 @@
 import numpy as np
 
-print(np.diff([5, 10, 15]))
+indices = np.concatenate((np.arange(10, 200, 10),
+                          np.arange(200, 500, 50),
+                          np.arange(500, 1000, 100),
+                          np.arange(1000, 2098, 200)))
+
+indices = np.concatenate(([1], np.arange(25, 1025, 25)))
+print(indices)
+# print(indices[:-1] + np.diff(indices)/2)
+# print(np.where(np.diff(indices) > 0)[0])
 
 # def f(x, y):
 #     x, y = np.meshgrid(x, y)
