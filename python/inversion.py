@@ -359,6 +359,7 @@ class Inversion:
     def plot_multiscale_grid(self, clusters_plot, **kw):
         # Get KW
         title = kw.pop('title', '')
+        fig_kwargs = kw.pop('fig_kwargs', {})
         title_kwargs = kw.pop('title_kwargs', {})
         map_kwargs = kw.pop('map_kwargs', {})
         kw['colors'] = kw.pop('colors', 'black')
@@ -368,7 +369,8 @@ class Inversion:
         data = self.match_data_to_clusters(self.state_vector,
                                            clusters_plot, default_value=0)
         data_zoomed = zoom(data.values, 50, order=0, mode='nearest')
-        fig, ax = fp.get_figax(maps=True, lats=data.lat, lons=data.lon)
+        fig, ax = fp.get_figax(maps=True, lats=data.lat, lons=data.lon,
+                               **fig_kwargs)
         ax.contour(data_zoomed, levels=np.arange(0, nstate, 1),
                    extent=[data.lon.min(), data.lon.max(),
                            data.lat.min(), data.lat.max()],
@@ -398,17 +400,17 @@ class Inversion:
         except KeyError:
             pass
 
-        fig, ax, kw = fp.get_figax(rows, cols, maps=True,
-                                   lats=clusters_plot.lat,
-                                   lons=clusters_plot.lon,
-                                   kw=kw)
+        fig_kwargs = kw.pop('fig_kwargs', {})
+        fig, ax = fp.get_figax(rows, cols, maps=True,
+                               lats=clusters_plot.lat, lons=clusters_plot.lon,
+                                **fig_kwargs)
 
         if cbar:
             cax = fp.add_cax(fig, ax)
             cbar_kwargs = kw.pop('cbar_kwargs', {})
 
         for i, axis in enumerate(ax.flatten()):
-            kw['figax'] = [fig, axis]
+            kw['fig_kwargs'] = {'figax' : [fig, axis]}
             try:
                 kw['title'] = titles[i]
                 kw['vmin'] = vmins[i]
@@ -633,11 +635,8 @@ class ReducedRankInversion(Inversion):
     ##########################
 
     def plot_info_frac(self, aspect=1.75, relative=True, **kw):
-        figaxkw = fp.get_figax(aspect=aspect, kw=kw)
-        if len(kw) > 0:
-            fig, ax, kw = figaxkw
-        else:
-            fig, ax = figaxkw
+        fig_kwargs = kw.pop('fig_kwargs', {})
+        fig, ax = fp.get_figax(aspect=aspect, **fig_kwargs)
 
         label = kw.pop('label', '')
         color = kw.pop('color', plt.cm.get_cmap('inferno')(5))
@@ -681,7 +680,8 @@ class ReducedRankInversion(Inversion):
         return m, b, r
 
     def plot_comparison_dict(self, xdata, compare_data, **kw):
-        fig, ax, kw = fp.get_figax(kw=kw)
+        fig_kwargs = kw.pop('fig_kwargs', {})
+        fig, ax = fp.get_figax(**fig_kwargs)
         ax.set_aspect('equal')
 
         # We need to know how many data sets were passed
@@ -713,7 +713,8 @@ class ReducedRankInversion(Inversion):
     def plot_comparison_hexbin(self, xdata, compare_data,
                                cbar, stats, **kw):
         cbar_kwargs = kw.pop('cbar_kwargs', {})
-        fig, ax, kw = fp.get_figax(kw=kw)
+        fig_kwargs = kw.pop('fig_kwargs', {})
+        fig, ax = fp.get_figax(**fig_kwargs)
         ax.set_aspect('equal')
 
         # Get data limits
@@ -961,10 +962,6 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         return new_sv, added_model_runs
 
-    # @staticmethod
-    # def check_similarity(old_sv, new_sv):
-
-
     @staticmethod
     def calculate_perturbation_matrix(state_vector, significance):
         sv_sig = pd.DataFrame({'sv' : state_vector,
@@ -977,32 +974,6 @@ class ReducedRankJacobian(ReducedRankInversion):
             index = np.argwhere(state_vector == sv).reshape(-1,)
             p[index, i] = 0.5
         return p
-
-    # def calculate_k_ms(self, forward_model, state_vector, k_base):
-    #     # Iterate through the state vector elements
-    #     sv_elements = np.unique(state_vector)[1:]
-    #     for i in sv_elements:
-
-    #         # Locate the location of all native resolution grid boxes
-    #         # corresponding to the state vector element
-    #         index = np.argwhere(state_vector == i).reshape(-1,)
-
-    #         # Create a vector the length of the native resolution
-    #         # state vector and set it equal to 0.5 where we have
-    #         # state vector elements
-    #         dx = np.zeros(self.nstate)
-    #         dx[index] = 0.5
-
-    #         # Run the forward model on those elements
-    #         dy = forward_model @ dx
-    #         ki = dy/(0.5*len(index))
-    #         ki = np.tile(ki.reshape(-1,1), (1,len(index)))
-    #         k_base[:,index] = ki
-    #     return k_base
-
-    # @staticmethod
-    # def add_quad(df):
-    #     return (df**2).sum()**0.5
 
     def disaggregate_k_ms(self):
         # Create space for the full resolution Jacobian
@@ -1295,34 +1266,39 @@ class ReducedRankJacobian(ReducedRankInversion):
         label_kwargs = {'labelpad' : fp.LABEL_PAD}
 
         fig, ax = fp.get_figax(rows=2, cols=2)
+
+        # Jacobian
+        title = 'Jacobian Matrix\nElements',
+        fig_kwargs = {'figax' : [fig, ax[0,0]]}
         fig, ax[0,0], c = true.plot_comparison('k', self.k, cbar=False,
-                                             **{'figax' : [fig, ax[0,0]],
-                                                'title' : 'Jacobian Matrix\nElements',
-                                                'xlabel' : '',
-                                                'title_kwargs' : title_kwargs,
-                                                'label_kwargs' : label_kwargs})
+                                               title=title, xlabel='',
+                                               fig_kwargs=fig_kwargs,
+                                               title_kwargs=title_kwargs,
+                                               label_kwargs=label_kwargs)
+        title = 'Posterior Emission\nScaling Factors'
+        fig_kwargs = {'figax' : [fig, ax[0,1]]}
         fig, ax[0,1], c = true.plot_comparison('xhat', self.xhat, cbar=False,
-                                             **{'figax' : [fig, ax[0,1]],
-                                                'title' :
-                                                'Posterior Emissions',
-                                                'title_kwargs' : title_kwargs,
-                                                'xlabel' : '',
-                                                'ylabel' : '',
-                                                'label_kwargs' : label_kwargs})
+                                                title=title,
+                                                xlabel='', ylabel='',
+                                               fig_kwargs=fig_kwargs,
+                                               title_kwargs=title_kwargs,
+                                               label_kwargs=label_kwargs)
+        title = 'Posterior Variance'
+        fig_kwargs = {'figax' : [fig, ax[1,0]]}
         fig, ax[1,0], c = true.plot_comparison('shat_diag', self.shat_diag,
-                                             cbar=False,
-                                            **{'figax' : [fig, ax[1,0]],
-                                               'title' : 'Posterior Variance',
-                                               'title_kwargs' : title_kwargs,
-                                               'ylabel' : 'Estimate',
-                                               'label_kwargs' : label_kwargs})
+                                               cbar=False, title=title,
+                                               ylabel='Estimate',
+                                               fig_kwargs=fig_kwargs,
+                                               title_kwargs=title_kwargs,
+                                               label_kwargs=label_kwargs)
+
+        title = 'Averaging Kernel\nSensitivities'
+        fig_kwargs={'figax' : [fig, ax[1,1]]}
         fig, ax[1,1], c = true.plot_comparison('dofs', self.dofs, cbar=False,
-                                            **{'figax' : [fig, ax[1,1]],
-                                               'title' : 'Averaging Kernel\nSensitivities',
-                                               'title_kwargs' : title_kwargs,
-                                               'ylabel' : '',
-                                               'label_kwargs' : label_kwargs,
-                                               'cbar_kwargs' : {'title' : 'Count'}})
+                                               title=title, ylabel='',
+                                               fig_kwargs=fig_kwargs,
+                                               title_kwargs=title_kwargs,
+                                               label_kwargs=label_kwargs)
 
         cax = fp.add_cax(fig, ax)
         cbar = fig.colorbar(c, cax=cax)
@@ -1340,7 +1316,7 @@ class ReducedRankJacobian(ReducedRankInversion):
         fig02, ax = true.plot_info_frac(label='True',
                                         color=fp.color(0),
                                         text=False)
-        fig02, ax = self.plot_info_frac(figax=[fig02, ax],
+        fig02, ax = self.plot_info_frac(fig_kwargs={'figax' : [fig02, ax]},
                                         label='Update',
                                         ls=':',
                                         color=fp.color(5))
@@ -1363,13 +1339,13 @@ class ReducedRankJacobian(ReducedRankInversion):
                                  lats=clusters_plot.lat,
                                  lons=clusters_plot.lon)
 
-        kw['figax'] = [fig03, ax[0, :]]
+        kw['fig_kwargs'] = {'figax' : [fig03, ax[0, :]]}
         kw['titles'] = ['Eigenvector %d' % (i+1) for i in range(cols)]
         fig03, ax[0, :], c = true.plot_state_grid(plot_data, rows=1, cols=cols,
                                                   clusters_plot=clusters_plot,
                                                   cbar=False, **kw)
 
-        kw['figax'] = [fig03, ax[1, :]]
+        kw['fig_kwargs'] = {'figax' : [fig03, ax[1, :]]}
         kw['titles'] = ['' for i in range(cols)]
         fig03, ax[1, :], c = self.plot_state_grid(plot_data, rows=1, cols=cols,
                                                   clusters_plot=clusters_plot,

@@ -161,16 +161,16 @@ print('CONSTRAINED CELLS: ', len(est2_f.xhat))
 print('DOFS: ', np.trace(est2_f.a))
 print('-----------------------\n')
 
-# # And multiscale grid results
-# est1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
-#                                   clusters_plot,
-#                                   n_cells=[98, 300, 500, 1200],
-#                                   n_cluster_size=[1, 3, 5, 8])
-# est2_ms = est1_ms.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
-#                                      clusters_plot, n_cells=[100],
-#                                      n_cluster_size=[1])
+# And multiscale grid results
+est1_ms = est0.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
+                                  clusters_plot,
+                                  n_cells=[98, 300, 500, 1200],
+                                  n_cluster_size=[1, 3, 5, 8])
+est2_ms = est1_ms.update_jacobian_ms(true.k, true.xa_abs, true.sa_vec,
+                                     clusters_plot, n_cells=[100],
+                                     n_cluster_size=[1])
 
-# print(est2_ms.rf)
+print(est2_ms.rf)
 
 #######################################
 ### SENSITIVITY TESTS: REDUCED RANK ###
@@ -370,76 +370,93 @@ dofs_summ = np.load(join(inputs, 'dofs_summary_R3.npy'))
 #  Figures                                                                   #
 #----------------------------------------------------------------------------#
 
-#############################
-### FIGURE 01: FLOW CHART ###
-#############################
-def flow_chart_settings(ax):
-    ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=2)
-    ax.coastlines(color='grey', zorder=5)
-    ax.outline_patch.set_visible(False)
-    return ax
+################################################
+### FIGURE 01: RANK AND DIMENSION FLOW CHART ###
+################################################
 
-# Original dimension
-fig01a, ax = est0.plot_multiscale_grid(clusters_plot, colors='0.5', zorder=3,
-                                       fig_kwargs=small_fig_kwargs,
-                                       map_kwargs=small_map_kwargs)
-ax = flow_chart_settings(ax)
-fp.save_fig(fig01a, loc=plots, name='fig01a_dimn_rankn')
+# def flow_chart_settings(ax):
+#     ax.add_feature(cartopy.feature.OCEAN, facecolor='white', zorder=2)
+#     ax.coastlines(color='grey', zorder=5)
+#     ax.outline_patch.set_visible(False)
+#     return ax
 
-# Reduced rank
-true.evec_sum = true.evecs[:, :3].sum(axis=1)
-fig01b, ax, c = true.plot_state('evec_sum', clusters_plot,
-                                title='', cbar=False,  cmap='RdBu_r',
-                                vmin=-0.1, vmax=0.1, default_value=0,
+# # Original dimension
+# fig01a, ax = est0.plot_multiscale_grid(clusters_plot, colors='0.5', zorder=3,
+#                                        fig_kwargs=small_fig_kwargs,
+#                                        map_kwargs=small_map_kwargs)
+# ax = flow_chart_settings(ax)
+# fp.save_fig(fig01a, loc=plots, name='fig01a_dimn_rankn')
+
+# # Reduced rank
+# true.evec_sum = true.evecs[:, :3].sum(axis=1)
+# fig01b, ax, c = true.plot_state('evec_sum', clusters_plot,
+#                                 title='', cbar=False,  cmap='RdBu_r',
+#                                 vmin=-0.1, vmax=0.1, default_value=0,
+#                                 fig_kwargs=small_fig_kwargs,
+#                                 map_kwargs=small_map_kwargs)
+# ax = flow_chart_settings(ax)
+# fp.save_fig(fig01b, loc=plots, name='fig01b_dimn_rankk')
+
+# # Reduced rank and dimension (not aggregate)
+# for i in range(3):
+#     fig01c, ax, c = true.plot_state(('evecs', i), clusters_plot,
+#                                     title='', cbar=False, cmap='RdBu_r',
+#                                     vmin=-0.1, vmax=0.1,default_value=0,
+#                                     fig_kwargs=small_fig_kwargs,
+#                                     map_kwargs=small_map_kwargs)
+#     ax = flow_chart_settings(ax)
+#     fp.save_fig(fig01c, loc=plots, name='fig01c_evec' + str(i))
+
+# # Reduced dimension (aggregate)
+# fig01d, ax = est1_ms.plot_multiscale_grid(clusters_plot,
+#                                           colors='0.5', zorder=3,
+#                                           fig_kwargs=small_fig_kwargs,
+#                                           map_kwargs=small_map_kwargs)
+# ax = flow_chart_settings(ax)
+# fp.save_fig(fig01d, loc=plots, name='fig01d_dimk_rankk_ms')
+
+#########################################################################
+### FIGURE 02: AVERAGING KERNEL SENSITIVITY TO PRIOR AND OBSERVATIONS ###
+#########################################################################
+
+# True averaging kernel
+title = 'Native Resolution\nAveraging Kernel Sensitivities'
+avker_cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
+avker_kwargs = {'cmap' : plasma_trans, 'vmin' : 0, 'vmax' : 1,
+                'cbar_kwargs' : avker_cbar_kwargs,
+                'fig_kwargs' : small_fig_kwargs,
+                'map_kwargs' : small_map_kwargs}
+fig02a, ax, c = true.plot_state('dofs', clusters_plot, title=title,
+                                **avker_kwargs)
+ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(true.a),
+        fontsize=config.LABEL_FONTSIZE*config.SCALE,
+        transform=ax.transAxes)
+fp.save_fig(fig02, plots, 'fig02a_true_averaging_kernel')
+
+# Initial estimate averaging kernel
+title = 'Initial Estimate\nAveraging Kernel Sensitivities'
+cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
+fig02b, ax, c = est0.plot_state('dofs', clusters_plot, title=title,
+                                **avker_kwargs)
+ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(est0.a),
+        fontsize=config.LABEL_FONTSIZE*config.SCALE,
+        transform=ax.transAxes)
+fp.save_fig(fig02, plots, 'fig02b_est0_averaging_kernel')
+
+# Prior error
+true.sd_vec = true.sa_vec**0.5
+true.sd_vec_abs = true.sd_vec*true.xa_abs
+cbar_kwargs = {'title' : 'Tg/month'}
+fig02c, ax, c = true.plot_state('sd_vec_abs', clusters_plot,
+                                title='Prior Error Standard Deviation',
+                                cmap=fp.cmap_trans('viridis'),
+                                vmin=0, vmax=15,
                                 fig_kwargs=small_fig_kwargs,
+                                cbar_kwargs=cbar_kwargs,
                                 map_kwargs=small_map_kwargs)
-ax = flow_chart_settings(ax)
-fp.save_fig(fig01b, loc=plots, name='fig01b_dimn_rankk')
+fp.save_fig(fig02c, plots, 'fig02c_prior_error')
 
-# Reduced rank and dimension (not aggregate)
-for i in range(3):
-    fig01c, ax, c = true.plot_state(('evecs', i), clusters_plot,
-                                    title='', cbar=False, cmap='RdBu_r',
-                                    vmin=-0.1, vmax=0.1,default_value=0,
-                                    fig_kwargs=small_fig_kwargs,
-                                    map_kwargs=small_map_kwargs)
-    ax = flow_chart_settings(ax)
-    fp.save_fig(fig01c, loc=plots, name='fig01c_evec' + str(i))
-
-# Reduced dimension (aggregate)
-fig01d, ax = est1_ms.plot_multiscale_grid(clusters_plot,
-                                          colors='0.5', zorder=3,
-                                          fig_kwargs=small_fig_kwargs,
-                                          map_kwargs=small_map_kwargs)
-ax = flow_chart_settings(ax)
-fp.save_fig(fig01d, loc=plots, name='fig01d_dimk_rankk_ms')
-
-#####################################
-### FIGURE 01: GOSAT OBSERVATIONS ###
-#####################################
-# fig01, ax = fp.make_axes(maps=True, lats=obs['lat'], lons=obs['lon'])
-
-# col = ax.scatter(obs['lon'], obs['lat'], c=obs['GOSAT'],
-#                cmap='inferno', vmin=1700, vmax=1800,
-#                s=100)
-
-# ax = fp.add_title(ax, r'GOSAT XCH$_4$ (July 2009)')
-# ax = fp.format_map(ax, obs['lat'], obs['lon'])
-# ax.set_xlim(clusters_plot.lon.min(), clusters_plot.lon.max())
-# ax.set_ylim(clusters_plot.lat.min(), clusters_plot.lat.max())
-
-# cax = fp.add_cax(fig01, ax)
-# cbar = plt.colorbar(col, cax=cax)
-# cbar = fp.format_cbar(cbar, 'XCH4 (ppb)')
-
-# # Save plot
-# fig01.savefig(join(plots, 'fig01_gosat_obs.png'),
-#              bbox_inches='tight', dpi=300)
-# print('Saved fig01_gosat_obs.png')
-
-############################################
-### FIGURE 02: GOSAT OBSERVATION DENSITY ###
-############################################
+# Observational density
 # lat_res = np.diff(clusters_plot.lat)[0]
 # lat_edges = np.append(clusters_plot.lat - lat_res/2,
 #                       clusters_plot.lat[-1] + lat_res/2)
@@ -474,35 +491,7 @@ fp.save_fig(fig01d, loc=plots, name='fig01d_dimk_rankk_ms')
 #               bbox_inches='tight', dpi=300)
 # print('Saved fig02_gosat_obs_density.png')
 
-#################################
-## FIGURE 03: PRIOR EMISSIONS ###
-#################################
-# cbar_kwargs = {'title' : 'Gg/month'}
-# fig03, ax, c = true.plot_state('xa_abs', clusters_plot,
-#                                **{'title' : 'Prior Emissions',
-#                                   'cmap' : fp.cmap_trans('viridis'),
-#                                   'cbar_kwargs' : cbar_kwargs})
 
-# fig03.savefig(join(plots, 'fig03_prior_emissions.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig03_prior_emissions.png')
-
-###############################
-### FIGURE 03b: PRIOR ERROR ###
-###############################
-# true.sd_vec = true.sa_vec**0.5
-# true.sd_vec_abs = true.sd_vec*true.xa_abs
-# cbar_kwargs = {'title' : 'Tg/month'}
-# fig03b, ax, c = true.plot_state('sd_vec_abs', clusters_plot,
-#                                 title='Prior Error Standard Deviation',
-#                                 cmap=fp.cmap_trans('viridis'),
-#                                 vmin=0, vmax=15,
-#                                 cbar_kwargs=cbar_kwargs,
-#                                 map_kwargs={'draw_labels' : False})
-
-# fig03b.savefig(join(plots, 'fig03b_prior_error.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig03_prior_emissions.png')
 
 ######################################
 ### FIGURE 04: TRUE POSTERIOR MEAN ###
@@ -522,35 +511,7 @@ fp.save_fig(fig01d, loc=plots, name='fig01d_dimk_rankk_ms')
 #               bbox_inches='tight', dpi=300)
 # print('Saved fig04_true_posterior_mean.png')
 
-########################################
-### FIGURE 05: TRUE AVERAGING KERNEL ###
-########################################
-title = 'Native Resolution\nAveraging Kernel Sensitivities'
-cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
-fig05, ax, c = true.plot_state('dofs', clusters_plot, title=title,
-                               cmap=plasma_trans, vmin=0, vmax=1,
-                               fig_kwargs=small_fig_kwargs,
-                               cbar_kwargs=cbar_kwargs,
-                               map_kwargs=small_map_kwargs)
-ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(true.a),
-        fontsize=config.LABEL_FONTSIZE*config.SCALE,
-        transform=ax.transAxes)
-fp.save_fig(fig05, plots, 'fig06_true_averaging_kernel')
 
-###########################################
-### FIGURE 06: INITIAL AVERAGING KERNEL ###
-###########################################
-title = 'Initial Estimate\nAveraging Kernel Sensitivities'
-cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
-fig06, ax, c = est0.plot_state('dofs', clusters_plot, title=title,
-                               cmap=plasma_trans, vmin=0, vmax=1,
-                               fig_kwargs=small_fig_kwargs,
-                               cbar_kwargs=cbar_kwargs,
-                               map_kwargs=small_map_kwargs)
-ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(est0.a),
-        fontsize=config.LABEL_FONTSIZE*config.SCALE,
-        transform=ax.transAxes)
-fp.save_fig(fig06, plots, 'fig06_est0_averaging_kernel')
 
 #####################################
 ### FIGURE 07 - 09: EST0 ANALYSIS ###
@@ -713,7 +674,7 @@ fp.save_fig(fig06, plots, 'fig06_est0_averaging_kernel')
 # # fig23, ax = true.plot_info_frac(label='True',
 # #                                 color=fp.color(0),
 # #                                 text=False)
-# # fig23, ax = est0.plot_info_frac(figax=[fig23, ax],
+# # fig23, ax = est0.plot_info_frac(fig_kwargs={'figax' : [fig23, ax]},
 # #                                 label='Initial Estimate',
 # #                                 ls=':',
 # #                                 color=fp.color(6),
