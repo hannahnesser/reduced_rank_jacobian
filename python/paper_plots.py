@@ -419,44 +419,44 @@ dofs_summ = np.load(join(inputs, 'dofs_summary_R3.npy'))
 ### FIGURE 02: AVERAGING KERNEL SENSITIVITY TO PRIOR AND OBSERVATIONS ###
 #########################################################################
 
-# True averaging kernel
-title = 'Native Resolution\nAveraging Kernel Sensitivities'
-avker_cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
-avker_kwargs = {'cmap' : plasma_trans, 'vmin' : 0, 'vmax' : 1,
-                'cbar_kwargs' : avker_cbar_kwargs,
-                'fig_kwargs' : small_fig_kwargs,
-                'map_kwargs' : small_map_kwargs}
-fig02a, ax, c = true.plot_state('dofs', clusters_plot, title=title,
-                                **avker_kwargs)
-ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(true.a),
-        fontsize=config.LABEL_FONTSIZE*config.SCALE,
-        transform=ax.transAxes)
-fp.save_fig(fig02, plots, 'fig02a_true_averaging_kernel')
+# # True averaging kernel
+# title = 'Native Resolution\nAveraging Kernel Sensitivities'
+# avker_cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
+# avker_kwargs = {'cmap' : plasma_trans, 'vmin' : 0, 'vmax' : 1,
+#                 'cbar_kwargs' : avker_cbar_kwargs,
+#                 'fig_kwargs' : small_fig_kwargs,
+#                 'map_kwargs' : small_map_kwargs}
+# fig02a, ax, c = true.plot_state('dofs', clusters_plot, title=title,
+#                                 **avker_kwargs)
+# ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(true.a),
+#         fontsize=config.LABEL_FONTSIZE*config.SCALE,
+#         transform=ax.transAxes)
+# fp.save_fig(fig02a, plots, 'fig02a_true_averaging_kernel')
 
-# Initial estimate averaging kernel
-title = 'Initial Estimate\nAveraging Kernel Sensitivities'
-cbar_kwargs = {'title' : r'$\partial\hat{x}_i/\partial x_i$'}
-fig02b, ax, c = est0.plot_state('dofs', clusters_plot, title=title,
-                                **avker_kwargs)
-ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(est0.a),
-        fontsize=config.LABEL_FONTSIZE*config.SCALE,
-        transform=ax.transAxes)
-fp.save_fig(fig02, plots, 'fig02b_est0_averaging_kernel')
+# # Initial estimate averaging kernel
+# title = 'Initial Estimate\nAveraging Kernel Sensitivities'
+# avker_kwargs['cbar_kwargs'] = avker_cbar_kwargs
+# fig02b, ax, c = est0.plot_state('dofs', clusters_plot, title=title,
+#                                 **avker_kwargs)
+# ax.text(0.025, 0.05, 'DOFS = %d' % np.trace(est0.a),
+#         fontsize=config.LABEL_FONTSIZE*config.SCALE,
+#         transform=ax.transAxes)
+# fp.save_fig(fig02b, plots, 'fig02b_est0_averaging_kernel')
 
-# Prior error
-true.sd_vec = true.sa_vec**0.5
-true.sd_vec_abs = true.sd_vec*true.xa_abs
-cbar_kwargs = {'title' : 'Tg/month'}
-fig02c, ax, c = true.plot_state('sd_vec_abs', clusters_plot,
-                                title='Prior Error Standard Deviation',
-                                cmap=fp.cmap_trans('viridis'),
-                                vmin=0, vmax=15,
-                                fig_kwargs=small_fig_kwargs,
-                                cbar_kwargs=cbar_kwargs,
-                                map_kwargs=small_map_kwargs)
-fp.save_fig(fig02c, plots, 'fig02c_prior_error')
+# # Prior error
+# true.sd_vec = true.sa_vec**0.5
+# true.sd_vec_abs = true.sd_vec*true.xa_abs
+# cbar_kwargs = {'title' : 'Tg/month'}
+# fig02c, ax, c = true.plot_state('sd_vec_abs', clusters_plot,
+#                                 title='Prior Error Standard Deviation',
+#                                 cmap=fp.cmap_trans('viridis'),
+#                                 vmin=0, vmax=15,
+#                                 fig_kwargs=small_fig_kwargs,
+#                                 cbar_kwargs=cbar_kwargs,
+#                                 map_kwargs=small_map_kwargs)
+# fp.save_fig(fig02c, plots, 'fig02c_prior_error')
 
-# Observational density
+# # Observational density
 # lat_res = np.diff(clusters_plot.lat)[0]
 # lat_edges = np.append(clusters_plot.lat - lat_res/2,
 #                       clusters_plot.lat[-1] + lat_res/2)
@@ -476,328 +476,111 @@ fp.save_fig(fig02c, plots, 'fig02c_prior_error')
 # obs_density = obs_density.set_index(['lat', 'lon'])['Nobs']
 # obs_density = obs_density.to_xarray()
 
+# title = 'GOSAT Observation Density\n(July 2009)'
 # viridis_trans_long = fp.cmap_trans('viridis', nalpha=90, ncolors=300)
 # cbar_kwargs = {'ticks' : np.arange(0, 25, 5),
 #                'title' : 'Count'}
-# fig02, ax, c = true.plot_state_format(obs_density, default_value=0,
-#                                       vmin=0,
-#                                       vmax=10,
-#                                       cmap=viridis_trans_long,
-#                                       title='GOSAT Observation Density (July 2009)',
-#                                       cbar_kwargs=cbar_kwargs,
-#                                       map_kwargs={'draw_labels' : False})
+# fig02d, ax, c = true.plot_state_format(obs_density, title=title,
+#                                        vmin=0, vmax=10, default_value=0,
+#                                        cmap=viridis_trans_long,
+#                                        fig_kwargs=small_fig_kwargs,
+#                                        cbar_kwargs=cbar_kwargs,
+#                                        map_kwargs=small_map_kwargs)
+# fp.save_fig(fig02d, plots, 'fig02d_gosat_obs_density')
 
-# fig02.savefig(join(plots, 'fig02_gosat_obs_density.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig02_gosat_obs_density.png')
+##################################
+### FIGURE 03: MULTISCALE GRID ###
+##################################
+# fig03, ax = est2_ms.plot_multiscale_grid(clusters_plot, colors='0.5', zorder=3,
+#                                          title='Multiscale Grid',
+#                                          fig_kwargs=small_fig_kwargs)
+# fp.save_fig(fig03, loc=plots, name='fig03_est2_ms_grid')
 
+###############################################
+### FIGURE 04 : CONSOLIDATED POSTERIOR PLOT ###
+###############################################
+# fig04a, ax04a = fp.get_figax(rows=1, cols=3, maps=True,
+#                              lats=clusters_plot.lat, lons=clusters_plot.lon)
+# fig04b, ax04b = fp.get_figax(rows=1, cols=3, maps=True,
+#                              lats=clusters_plot.lat, lons=clusters_plot.lon)
 
+# def add_dofs_subtitle(inversion_object, ax):
+#     subtitle = ('%d DOFS (%.2f/cell)'
+#                 % (np.trace(inversion_object.a),
+#                   (np.trace(inversion_object.a)/inversion_object.nstate)))
+#     ax.text(0.5, 1.15, subtitle,
+#             fontsize=config.SUBTITLE_FONTSIZE*config.SCALE,
+#             ha='center', transform=ax.transAxes)
+#     return ax
 
-######################################
-### FIGURE 04: TRUE POSTERIOR MEAN ###
-######################################
-# cbar_kwargs = {'ticks' : np.arange(-1, 4, 1),
-#                'title' : 'Scaling Factors'}
-# fig04, ax, c = true.plot_state('xhat',
-#                                clusters_plot,
-#                                default_value=1,
-#                                **{'title' : 'True Posterior Mean',
-#                                   'cmap' : 'RdBu_r',
-#                                   'vmin' : -1,
-#                                   'vmax' : 3,
-#                                   'cbar_kwargs' : cbar_kwargs})
+# title_kwargs = {'y' : 1.3}
+# state_cbar_kwargs = {'ticks' : np.arange(-1, 4, 1)}
+# dofs_cbar_kwargs = {'ticks' : np.arange(0, 1.1, 0.25)}
+# state_kwargs = {'default_value' : 1, 'cmap' : 'RdBu_r',
+#                 'vmin' : -1, 'vmax' : 3,
+#                 'cbar' : False, 'cbar_kwargs' : state_cbar_kwargs,
+#                 'title_kwargs' : title_kwargs, 'map_kwargs' : small_map_kwargs}
+# dofs_kwargs =  {'cmap' : plasma_trans, 'vmin' : 0, 'vmax' : 1,
+#                 'cbar' : False, 'cbar_kwargs' : dofs_cbar_kwargs,
+#                 'title_kwargs' : title_kwargs, 'map_kwargs' : small_map_kwargs}
+# titles = ['Native Resolution', 'Multiscale Grid', 'Reduced Rank']
+# quantities = ['', '_long', '']
 
-# fig04.savefig(join(plots, 'fig04_true_posterior_mean.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig04_true_posterior_mean.png')
+# for i, inv in enumerate([true, est2_ms, est2]):
+#     state_kwargs['title'] = titles[i]
+#     state_kwargs['fig_kwargs'] = {'figax' : [fig04a, ax04a[i]]}
+#     dofs_kwargs['title'] = titles[i]
+#     dofs_kwargs['fig_kwargs'] = {'figax' : [fig04b, ax04b[i]]}
 
+#     # Posterior emissions
+#     fig04a, ax04a[i], ca = inv.plot_state('xhat' + quantities[i],
+#                                          clusters_plot, **state_kwargs)
+#     ax04a[i] = add_dofs_subtitle(inv, ax04a[i])
 
+#     # Averaging kernel sensitivities
+#     fig04b, ax04b[i], cb = inv.plot_state('dofs' + quantities[i],
+#                                          clusters_plot, **dofs_kwargs)
+#     ax04b[i] = add_dofs_subtitle(inv, ax04b[i])
 
-#####################################
-### FIGURE 07 - 09: EST0 ANALYSIS ###
-#####################################
-# fig07, fig08, fig09 = est0.full_analysis(true, clusters_plot)
-# fig07.suptitle('Initial Estimate', fontsize=TITLE_FONTSIZE*SCALE,
-#                y=1.1)
-# fig07.savefig(join(plots, 'fig07_est0_comparison.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig07_est0_comparison.png')
-# fig08.savefig(join(plots, 'fig08_est0_spectrum.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig08_est0_spectrum.png')
-# fig09.savefig(join(plots, 'fig09_est0_eigenvectors.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig09_est0_eigenvectors.png')
+# # Polishing posterior emissions
+# # Colorbar
+# cax = fp.add_cax(fig04a, ax04a)
+# cbar = fig04a.colorbar(ca, cax=cax, **state_cbar_kwargs)
+# cbar = fp.format_cbar(cbar, cbar_title='Scaling Factors')
 
+# # Label
+# ax04a[0].text(-0.3, 0.5, 'Posterior\nEmissions',
+#               fontsize=config.TITLE_FONTSIZE*config.SCALE,
+#               rotation=90, ha='center', va='center',
+#               transform=ax04a[0].transAxes)
+# # Save
+# fp.save_fig(fig04a, plots, 'fig04a_posterior_mean_summary')
 
-#####################################
-### FIGURE 10 - 12: EST1 ANALYSIS ###
-#####################################
-# fig10, fig11, fig12 = est1.full_analysis(true, clusters_plot)
-# fig10.suptitle('First Update', fontsize=TITLE_FONTSIZE*SCALE,
-#                y=1.1)
-# fig10.savefig(join(plots, 'fig10_est1_comparison.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig10_est1_comparison.png')
-# fig11.savefig(join(plots, 'fig11_est1_spectrum.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig11_est1_spectrum.png')
-# fig12.savefig(join(plots, 'fig12_est1_eigenvectors.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig12_est1_eigenvectors.png')
+# # Polishing averaging kernel sensitivities
+# # Colorbar
+# cax = fp.add_cax(fig04b, ax04b)
+# cbar = fig04b.colorbar(cb, cax=cax, **dofs_cbar_kwargs)
+# cbar = fp.format_cbar(cbar, cbar_title=r'$\partial\hat{x}/\partial x$')
 
+# # Label
+# ax04b[0].text(-0.3, 0.5, 'Averaging\nKernel',
+#               fontsize=config.TITLE_FONTSIZE*config.SCALE,
+#               rotation=90, ha='center', va='center',
+#               transform=ax04b[0].transAxes)
 
-#####################################
-### FIGURE 13 - 15: EST2 ANALYSIS ###
-#####################################
-# fig13, fig14, fig15 = est2.full_analysis(true, clusters_plot)
-# # fig14.suptitle('Final Update', fontsize=TITLE_FONTSIZE*SCALE,
-# #                y=1.5)
-# # fig13.axes[0].text(-0.65, 0.5, 'Second Update\n(Unfiltered)',
-# #                    fontsize=LABEL_FONTSIZE*SCALE,
-# #                    rotation=90, ha='center', va='center',
-# #                    transform=fig13.axes[0].transAxes)
-# fig13.savefig(join(plots, 'fig13_est2_comparison.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig13_est2_comparison.png')
-# fig14.savefig(join(plots, 'fig14_est2_spectrum.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig14_est2_spectrum.png')
-# fig15.savefig(join(plots, 'fig15_est2_eigenvectors.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig15_est2_eigenvectors.png')
+# # Save
+# fp.save_fig(fig04b, plots, 'fig04b_averaging_kernel_summary')
 
-#######################################
-### FIGURE 16 - 18: EST2_F ANALYSIS ###
-#######################################
-# # config.SCALE *= 2
-# # inv.SCALE *= 2
-# fig16, fig17, fig18 = est2_f.full_analysis(true_f, clusters_plot)
-# # fig17.suptitle('Final Update', fontsize=TITLE_FONTSIZE*SCALE,
-# #                y=1.5)
-# # fig16.axes[0].text(-0.65, 0.5, 'Second Update\n(Filtered)',
-# #                    fontsize=LABEL_FONTSIZE*SCALE,
-# #                    rotation=90, ha='center', va='center',
-# #                    transform=fig16.axes[0].transAxes)
-# fig16.savefig(join(plots, 'fig16_est2_f_comparison.png'),
-#           bbox_inches='tight', dpi=300)
-# print('Saved fig16_est2_f_comparison.png')
-# fig17.savefig(join(plots, 'fig17_est2_f_spectrum.png'),
-#           bbox_inches='tight', dpi=300)
-# print('Saved fig17_est2_f_spectrum.png')
-# fig18.savefig(join(plots, 'fig18_est2_f_eigenvectors.png'),
-#           bbox_inches='tight', dpi=300)
-# print('Saved fig18_est2_f_eigenvectors.png')
-# # config.SCALE /= 2
-# # inv.SCALE /= 2
+############################################################
+### FIGURE 05: EST2_F POSTERIOR COMPARSION SCATTER PLOTS ###
+############################################################
+# fig05, _, _ = est2_f.full_analysis(true_f, clusters_plot)
+# fp.save_fig(fig05, plots, 'fig05b_posterior_scattter_comparison')
 
-############################################
-### FIGURE 19 -20: K0 AND KTRUE ANALYSIS ###
-############################################
-# n = 1100
-# fig19, ax = fp.make_axes(maps=True, lats=obs['lat'], lons=obs['lon'])
+#################################################
+### FIGURE 06: REDUCED RANK SENSITIVITY TESTS ###
+#################################################
 
-# col = ax.scatter(obs['lon'], obs['lat'], c=est0.k[:, n],
-#                  cmap=fp.cmap_trans('Reds'), vmin=0, vmax=0.2,
-#                  s=100)
-
-# ax = fp.add_title(ax, r'Initial Estimate: $\frac{\mathrm{d}\mathbf{y}}{\mathrm{d}x_{%d}}$' % n)
-# ax = fp.format_map(ax, obs['lat'], obs['lon'])
-
-# cax = fp.add_cax(fig19, ax)
-# cbar = plt.colorbar(col, cax=cax)
-# cbar = fp.format_cbar(cbar, r'$\frac{\mathrm{d}y}{\mathrm{d}x_{%d}}$ (ppb)' % n)
-# cbar.set_ticks(np.arange(0, 0.21, 0.1))
-
-# fig19.savefig(join(plots, 'fig19_kinit_col.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig18_est2_f_eigenvectors.png')
-
-
-# fig20, ax = fp.make_axes(maps=True, lats=obs['lat'], lons=obs['lon'])
-
-# col = ax.scatter(obs['lon'], obs['lat'], c=true.k[:, n],
-#                  cmap=fp.cmap_trans('Reds'), vmin=0, vmax=0.2,
-#                  s=100)
-
-# ax = fp.add_title(ax, r'True: $\frac{\mathrm{d}\mathbf{y}}{\mathrm{d}x_{%d}}$' % n)
-# ax = fp.format_map(ax, obs['lat'], obs['lon'])
-
-# cax = fp.add_cax(fig20, ax)
-# cbar = plt.colorbar(col, cax=cax)
-# cbar = fp.format_cbar(cbar, r'$\frac{\mathrm{d}y}{\mathrm{d}x_{%d}}$ (ppb)' % n)
-# cbar.set_ticks(np.arange(0, 0.21, 0.1))
-
-# fig20.savefig(join(plots, 'fig20_kinit_col.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig18_est2_f_eigenvectors.png')
-
-######################################
-### FIGURE 21: EST2 POSTERIOR MEAN ###
-######################################
-# cbar_kwargs = {'ticks' : np.arange(-1, 4, 1),
-#                'title' : 'Scaling Factors'}
-# fig21, ax, c = est2.plot_state('xhat',
-#                                clusters_plot,
-#                                default_value=1,
-#                                **{'title' : 'Estimated Posterior Emissions',
-#                                   'cmap' : 'RdBu_r',
-#                                   'vmin' : -1,
-#                                   'vmax' : 3,
-#                                   'cbar_kwargs' : cbar_kwargs})
-
-# fig21.savefig(join(plots, 'fig21_est2_posterior_mean.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig21_true_posterior_mean.png')
-
-########################################
-### FIGURE 22: EST2 AVERAGING KERNEL ###
-########################################
-# cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
-# fig22, ax, c = est2.plot_state('dofs', clusters_plot,
-#                                **{'title' : 'Estimated Averaging Kernel',
-#                                   'cmap' : plasma_trans,
-#                                   'vmin' : 0,
-#                                   'vmax' : 1,
-#                                   'cbar_kwargs' : cbar_kwargs})
-# ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(true.a),
-#         fontsize=LABEL_FONTSIZE*SCALE,
-#         transform=ax.transAxes)
-
-# fig22.savefig(join(plots, 'fig22_est2_averaging_kernel.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig22_est2_averaging_kernel.png')
-
-########################################
-### FIGURE 23 - 26: DETAILED SPECTRA ###
-########################################
-# # fig23, ax = true.plot_info_frac(label='True',
-# #                                 color=fp.color(0),
-# #                                 text=False)
-# # fig23, ax = est0.plot_info_frac(fig_kwargs={'figax' : [fig23, ax]},
-# #                                 label='Initial Estimate',
-# #                                 ls=':',
-# #                                 color=fp.color(6),
-# #                                 text=False)
-
-# # frac = np.cumsum(est0.evals_q/est0.evals_q.sum())
-# # snr_idx = np.argwhere(est0.evals_q >= 0.555555)[-1][0]
-# # ax.scatter(snr_idx, frac[snr_idx], s=30*SCALE, c=fp.color(6))
-# # ax.text(snr_idx + est0.nstate*0.05, frac[snr_idx] - 0.05,
-# #         r'SNR = 1.25',
-# #         ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
-# #         color=fp.color(6))
-# # ax.text(snr_idx + est0.nstate*0.05, frac[snr_idx] - 0.125,
-# #         'n = %d' % snr_idx,
-# #         ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
-# #         color=fp.color(6))
-# # ax.text(snr_idx + est0.nstate*0.05, frac[snr_idx] - 0.2,
-# #         r'$f_{DOFS}$ = %.2f' % frac[snr_idx],
-# #         ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
-# #         color=fp.color(6))
-
-# # fig23.savefig(join(plots, 'fig23_est0_spectra.png'),
-# #               bbox_inches='tight', dpi=300)
-# # print('Saved fig23_est0_spectra.png')
-
-# # fig23, ax = est1.plot_info_frac(figax=[fig23, ax],
-# #                                 label='Updated Estimate',
-# #                                 ls=':',
-# #                                 color=fp.color(4),
-# #                                 text = False)
-# # fig23.savefig(join(plots, 'fig24_est0_spectra.png'),
-# #               bbox_inches='tight', dpi=300)
-# # print('Saved fig24_est0_spectra.png')
-
-# # fig24, ax = true.plot_info_frac(label='True',
-# #                                 color=fp.color(0),
-# #                                 text=False)
-# # fig24, ax = est0.plot_info_frac(figax=[fig24, ax],
-# #                                 label='Initial Estimate',
-# #                                 ls=':',
-# #                                 color=fp.color(6),
-# #                                 text = False)
-# # fig24, ax = est1.plot_info_frac(figax=[fig24, ax],
-# #                                 label='Updated Estimate',
-# #                                 ls=':',
-# #                                 color=fp.color(4),
-# #                                 text = False)
-
-# # frac = np.cumsum(est0.evals_q/est0.evals_q.sum())
-# # info_idx = np.argwhere(frac >= 0.975)[0][0]
-# # ax.scatter(info_idx, frac[info_idx], s=30*SCALE, c=fp.color(6))
-# # ax.text(info_idx + est0.nstate*0.05, frac[info_idx] - 0.05,
-# #         r'\% DOFS = 97.5\%',
-# #         ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
-# #         color=fp.color(6))
-# # ax.text(info_idx + est0.nstate*0.05, frac[info_idx] - 0.125,
-# #         'n = %d' % info_idx,
-# #         ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
-# #         color=fp.color(6))
-# # # ax.text(info_idx + est0.nstate*0.05, frac[info_idx] - 0.15,
-# # #         r'$f_{DOFS}$ = %.2f' % frac[info_idx],
-# # #         ha='left', va='top', fontsize=LABEL_FONTSIZE*SCALE,
-# # #         color=fp.color(6))
-
-# # fig24.savefig(join(plots, 'fig25_est1_spectra.png'),
-# #               bbox_inches='tight', dpi=300)
-# # print('Saved fig24_est1_spectra.png')
-
-# # fig24, ax = est2.plot_info_frac(figax=[fig24, ax],
-# #                                 label='Final Estimate',
-# #                                 ls=':',
-# #                                 color=fp.color(2),
-# #                                 text = False)
-
-# # fig24.savefig(join(plots, 'fig26_est1_spectra.png'),
-# #               bbox_inches='tight', dpi=300)
-# # print('Saved fig24_est1_spectra.png')
-
-
-# fig25, ax = true.plot_info_frac(label='True',
-#                                 color=fp.color(0),
-#                                 text=False,
-#                                 aspect=3)
-# fig25, ax = est0.plot_info_frac(figax=[fig25, ax],
-#                                 label='Initial Estimate',
-#                                 ls=':',
-#                                 color=fp.color(6),
-#                                 text = False)
-# fig25, ax = est1.plot_info_frac(figax=[fig25, ax],
-#                                 label='Updated Estimate',
-#                                 ls=':',
-#                                 color=fp.color(4),
-#                                 text = False)
-# fig25, ax = est2.plot_info_frac(figax=[fig25, ax],
-#                                 label='Final Estimate',
-#                                 ls=':',
-#                                 color=fp.color(2),
-#                                 text = False)
-
-# fig25.savefig(join(plots, 'fig25_est1_spectra.png'),
-#               bbox_inches='tight', dpi=300)
-# print('Saved fig26_est1_spectra.png')
-
-######################################
-### FIGURE 27: SAMPLE EIGENVECTORS ###
-######################################
-# rows = 2
-# cols = 1
-# plot_data = [('evecs', i) for i in range(max(rows, cols))]
-# fig27, ax, c = true.plot_state_grid(plot_data, rows=rows, cols=cols,
-#                                     clusters_plot=clusters_plot, cbar=False,
-#                                     vmin=-0.1, vmax=0.1, cmap='RdBu_r',
-#                                     title='',
-#                                     map_kwargs={'draw_labels' : False})
-# cax = fp.add_cax(fig27, ax)
-# cbar = fig27.colorbar(c, cax=cax, ticks=[-0.1, 0, 0.1])
-# cbar = fp.format_cbar(cbar, 'Eigenvector Value')
-# plt.subplots_adjust(hspace=0.005, wspace=0.005)
-# fp.save_fig(fig27, plots, 'fig27_true_eigenvectors')
-
-####################################
-### FIGURE 28: SENSITIVITY TESTS ###
-####################################
 # min_mr = 0
 # max_mr = 1000
 # increment = 25
@@ -814,8 +597,8 @@ fp.save_fig(fig02c, plots, 'fig02c_prior_error')
 #     return func(model_runs)
 
 # # R2 plot
-# fig, ax = fp.get_figax()
-# cax = fp.add_cax(fig, ax)
+# fig06, ax = fp.get_figax()
+# cax = fp.add_cax(fig06, ax)
 # # ax = fp.add_title(ax, r'Posterior Emissions r$^2$'))
 # ax = fp.add_title(ax, 'DOFS')
 # # ax = fp.add_title(ax, 'Number of Constrained Grid Cells')
@@ -845,10 +628,10 @@ fp.save_fig(fig02c, plots, 'fig02c_prior_error')
 #            c=fp.color(3),
 #            s=200, marker='*')
 
-# # cbar = fig.colorbar(cf, cax=cax, ticks=np.linspace(0, 1, 6))
-# cbar = fig.colorbar(cf, cax=cax,
+# # cbar = fig06.colorbar(cf, cax=cax, ticks=np.linspace(0, 1, 6))
+# cbar = fig06.colorbar(cf, cax=cax,
 #                     ticks=np.arange(0, true.dofs.sum(), 50))
-# # cbar = fig.colorbar(cf, cax=cax, ticks=np.arange(0, 2000, 500))
+# # cbar = fig06.colorbar(cf, cax=cax, ticks=np.arange(0, 2000, 500))
 
 # # cbar = fp.format_cbar(cbar, r'r$^2$')
 # cbar = fp.format_cbar(cbar, 'DOFS')
@@ -867,234 +650,7 @@ fp.save_fig(fig02c, plots, 'fig02c_prior_error')
 # ax.set_ylim(0, n-1)
 
 # # fp.save_fig(fig, plots, 'fig28c_r2_comparison')
-# fp.save_fig(fig, plots, 'fig28d_dofs_comparison')
-
-##################################
-### FIGURE 29: MULTISCALE GRID ###
-##################################
-# fig29, ax = est1_ms.plot_multiscale_grid(clusters_plot,
-#                                       colors='0.5', zorder=3,
-#                                       title='MS Grid (1)')
-# fp.save_fig(fig29, loc=plots, name='fig29_est1_ms_grid')
-
-# fig30, ax = est2_ms.plot_multiscale_grid(clusters_plot,
-#                                       colors='0.5', zorder=3,
-#                                       title='Multiscale Grid')
-# fp.save_fig(fig30, loc=plots, name='fig30_est2_ms_grid')
-
-############################################
-### FIGURE 30: MULTISCALE GRID POSTERIOR ###
-############################################
-# cbar_kwargs = {'ticks' : np.arange(-1, 4, 1),
-#                'title' : 'Scaling Factors'}
-# fig31, ax, c = est1_ms.plot_state('xhat_long', clusters_plot, default_value=1,
-#                                   title='Multiscale Grid',
-#                                   cmap = 'RdBu_r', vmin = -1, vmax = 3,
-#                                   cbar_kwargs = cbar_kwargs)
-# fp.save_fig(fig31, plots, 'fig31_mg01_posterior_mean')
-
-# cbar_kwargs = {'ticks' : np.arange(-1, 4, 1),
-#                'title' : 'Scaling Factors'}
-# fig32, ax, c = est2_ms.plot_state('xhat_long', clusters_plot, default_value=1,
-#                                   title='Multiscale Grid',
-#                                   cmap = 'RdBu_r', vmin = -1, vmax = 3,
-#                                   cbar_kwargs = cbar_kwargs)
-# fp.save_fig(fig32, plots, 'fig32_mg02_posterior_mean')
-
-########################################
-### FIGURE 30: MULTISCALE GRID AVKER ###
-########################################
-# cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
-# fig33, ax, c = est1_ms.plot_state('dofs_long', clusters_plot,
-#                                   title='Multiscale Grid',
-#                                   cmap=plasma_trans, vmin=0, vmax=1,
-#                                   cbar_kwargs=cbar_kwargs)
-# ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(est1_ms.a),
-#         fontsize=LABEL_FONTSIZE*SCALE,
-#         transform=ax.transAxes)
-# fp.save_fig(fig33, plots, 'fig33_mg01_avker')
-
-# cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
-# fig34, ax, c = est2_ms.plot_state('dofs_long', clusters_plot,
-#                                   title='Multiscale Grid',
-#                                   cmap=plasma_trans, vmin=0, vmax=1,
-#                                   cbar_kwargs=cbar_kwargs)
-# ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(est2_ms.a),
-#         fontsize=LABEL_FONTSIZE*SCALE,
-#         transform=ax.transAxes)
-# fp.save_fig(fig34, plots, 'fig34_mg02_avker')
-
-###################################################
-### FIGURE 30: MULTISCALE GRID DOFS PROGRESSION ###
-###################################################
-
-# fig, ax = fp.get_figax(rows=1, cols=2, aspect=2)
-
-# frac0 = np.cumsum(np.sort(est0.dofs)[::-1]/est0.dofs.sum())
-# print(frac0[97], frac0[397], frac0[897])
-# frac1 = np.cumsum(np.sort(est1_ms.dofs)[::-1]/est1_ms.dofs.sum())
-# print(frac1[29], frac1[100])
-# frac2 = np.cumsum(np.sort(est2_ms.dofs)[::-1]/est2_ms.dofs.sum())
-# fract = np.cumsum(np.sort(true.dofs)[::-1]/true.dofs.sum())
-# label = ['Initial Estimate', 'Updated Estimate',
-#          'Final Estimate', 'Native Resolution']
-# lines = []
-# for i, f in enumerate([frac0, frac1, frac2, fract]):
-#     l = ax[0].plot(f, label=label[i], c=fp.color(6-2*i), lw=3)
-#     lines.append(l)
-
-# ax[0] = fp.add_labels(ax[0],
-#                    xlabel='State Vector Index',
-#                    ylabel='Fraction of DOFS')
-# ax[0] = fp.add_title(ax[0], title='Multiscale Grid')
-
-# for i, f in enumerate([est0, est1, est2, true]):
-#     fig, ax[1] = f.plot_info_frac(figax=[fig, ax[1]],
-#                                   label=label[i],
-#                                   color=fp.color(6-2*i),
-#                                   text=False)
-# ax[1].get_legend().remove()
-# ax[1] = fp.add_title(ax[1], title='Reduced Rank')
-
-# # Join axes
-# ax[1].get_shared_y_axes().join(ax[0], ax[1])
-# ax[1].set_yticklabels([])
-# ax[1].set_ylabel('')
-
-# lgd = plt.legend(lines, labels=label, bbox_to_anchor=(-0.1, -0.5),
-#                  loc='center', ncol=4,
-#                  frameon=False, fontsize=LABEL_FONTSIZE*SCALE)
-
-# # fp.save_fig(fig, plots, 'fig37_spectra_summary')
-# # fig.subplots_adjust(bottom=-1, wspace=0.2)
-# fig.savefig(join(plots, 'fig37_spectra_summary.png'),
-#             bbox_inches='tight', dpi=300)
-# print('Saved fig37_spectra_summary.png')
-
-###################################
-### CONSOLIDATED POSTERIOR PLOT ###
-###################################
-
-# fig, ax = fp.get_figax(rows=1, cols=3, maps=True,
-#                        lats=clusters_plot.lat, lons=clusters_plot.lon)
-
-# cbar_kwargs = {'ticks' : np.arange(-1, 4, 1)}
-# title_kwargs = {'y' : 1.3}
-# subtitle = ('%d DOFS (%.2f/cell)'
-#             % (np.trace(true.a), (np.trace(true.a)/true.nstate)))
-# fig, ax[0], c = true.plot_state('xhat', clusters_plot,  default_value=1,
-#                                 title='Native Resolution',
-#                                 title_kwargs=title_kwargs,
-#                                 cmap = 'RdBu_r', vmin = -1, vmax = 3,
-#                                 cbar=False,
-#                                 cbar_kwargs = cbar_kwargs,
-#                                 map_kwargs={'draw_labels' : False},
-#                                 figax=[fig, ax[0]])
-# ax[0].text(0.5, 1.15, subtitle, fontsize=SUBTITLE_FONTSIZE*SCALE,
-#            ha='center', transform=ax[0].transAxes)
-# subtitle = ('%d DOFS (%.2f/cell)'
-#             % (np.trace(est2_ms.a), (np.trace(est2_ms.a)/est2_ms.nstate)))
-# fig, ax[1], c = est2_ms.plot_state('xhat_long', clusters_plot,
-#                                    default_value=1,
-#                                    title='Multiscale Grid',
-#                                    title_kwargs=title_kwargs,
-#                                    cmap = 'RdBu_r', vmin = -1, vmax = 3,
-#                                    cbar=False,
-#                                    cbar_kwargs = cbar_kwargs,
-#                                    map_kwargs={'draw_labels' : False},
-#                                    figax=[fig, ax[1]])
-# ax[1].text(0.5, 1.15, subtitle, fontsize=SUBTITLE_FONTSIZE*SCALE,
-#            ha='center', transform=ax[1].transAxes)
-# subtitle = ('%d DOFS (%.2f/cell)'
-#             % (np.trace(est2.a), (np.trace(est2.a)/est2.nstate)))
-# fig, ax[2], c = est2.plot_state('xhat', clusters_plot,  default_value=1,
-#                                 title='Reduced Rank',
-#                                 title_kwargs=title_kwargs,
-#                                 cmap = 'RdBu_r', vmin = -1, vmax = 3,
-#                                 cbar=False,
-#                                 cbar_kwargs = cbar_kwargs,
-#                                 map_kwargs={'draw_labels' : False},
-#                                 figax=[fig, ax[2]])
-# ax[2].text(0.5, 1.15, subtitle, fontsize=SUBTITLE_FONTSIZE*SCALE,
-#            ha='center', transform=ax[2].transAxes)
-
-# cax = fp.add_cax(fig, ax)
-# cbar = fig.colorbar(c, cax=cax, **cbar_kwargs)
-# cbar = fp.format_cbar(cbar, cbar_title='Scaling Factors')
-
-# ax[0].text(-0.25, 0.5, 'Posterior\nEmissions', fontsize=TITLE_FONTSIZE*SCALE,
-#            rotation=90, ha='center', va='center',
-#            transform=ax[0].transAxes)
-
-# fp.save_fig(fig, plots, 'fig35_posterior_mean_summary')
-
-# fig, ax = fp.get_figax(rows=1, cols=3, maps=True,
-#                        lats=clusters_plot.lat, lons=clusters_plot.lon)
-
-# cbar_kwargs = {'ticks' : np.arange(0, 1.1, 0.25)}
-# title_kwargs = {'y' : 1.2}
-# fig, ax[0], c = true.plot_state('dofs', clusters_plot,
-#                                 title='Native Resolution',
-#                                 title_kwargs=title_kwargs,
-#                                 cmap = plasma_trans, vmin=0, vmax=1,
-#                                 cbar=False,
-#                                 cbar_kwargs = cbar_kwargs,
-#                                 map_kwargs={'draw_labels' : False},
-#                                 figax=[fig, ax[0]])
-# # ax[0].text(1-0.025, 0.2, 'DOFS: %d' % np.trace(true.a),
-# #            fontsize=LABEL_FONTSIZE*SCALE,
-# #            ha='right',
-# #            transform=ax[0].transAxes)
-# # ax[0].text(1-0.025, 0.05, 'DOFS/cell: %.2f' % (np.trace(true.a)/true.nstate),
-# #            fontsize=LABEL_FONTSIZE*SCALE,
-# #            ha='right',
-# #            transform=ax[0].transAxes)
-
-# fig, ax[1], c = est2_ms.plot_state('dofs_long', clusters_plot,
-#                                    title='Multiscale Grid',
-#                                    title_kwargs=title_kwargs,
-#                                    cmap = plasma_trans, vmin=0, vmax=1,
-#                                    cbar=False,
-#                                    cbar_kwargs = cbar_kwargs,
-#                                    map_kwargs={'draw_labels' : False},
-#                                    figax=[fig, ax[1]])
-# # ax[1].text(1-0.025, 0.2, 'DOFS: %d' % np.sum(est2_ms.dofs),
-# #            fontsize=LABEL_FONTSIZE*SCALE,
-# #            ha='right',
-# #            transform=ax[1].transAxes)
-# # ax[1].text(1-0.025, 0.05, 'DOFS/cell: %.2f'
-# #            % (np.sum(est2_ms.dofs)/est2_ms.nstate),
-# #            fontsize=LABEL_FONTSIZE*SCALE,
-# #            ha='right',
-# #            transform=ax[1].transAxes)
-
-# fig, ax[2], c = est2.plot_state('dofs', clusters_plot,
-#                                 title='Reduced Rank',
-#                                 title_kwargs=title_kwargs,
-#                                 cmap = plasma_trans, vmin=0, vmax=1,
-#                                 cbar=False,
-#                                 cbar_kwargs = cbar_kwargs,
-#                                 map_kwargs={'draw_labels' : False},
-#                                 figax=[fig, ax[2]])
-# # ax[2].text(1-0.025, 0.2, 'DOFS: %d' % np.trace(est2.a),
-# #            fontsize=LABEL_FONTSIZE*SCALE,
-# #            ha='right',
-# #            transform=ax[2].transAxes)
-# # ax[2].text(1-0.025, 0.05, 'DOFS/cell: %.2f' % (np.trace(est2.a)/est2.nstate),
-# #            fontsize=LABEL_FONTSIZE*SCALE,
-# #            ha='right',
-# #            transform=ax[2].transAxes)
-
-
-# cax = fp.add_cax(fig, ax)
-# cbar = fig.colorbar(c, cax=cax, **cbar_kwargs)
-# cbar = fp.format_cbar(cbar, cbar_title=r'$\partial\hat{x}/\partial x$')
-
-# ax[0].text(-0.25, 0.5, 'Averaging\nKernel', fontsize=TITLE_FONTSIZE*SCALE,
-#            rotation=90, ha='center', va='center',
-#            transform=ax[0].transAxes)
-
-# fp.save_fig(fig, plots, 'fig36_averaging_kernel_summary')
+# fp.save_fig(fig06, plots, 'fig06_dofs_comparison')
 
 ####################################################
 ### FIGURE 37 : MULTISCALE GRID CONVERGENCE TEST ###

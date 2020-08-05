@@ -651,18 +651,21 @@ class ReducedRankInversion(Inversion):
         ax.plot(frac, label=label, c=color, ls=ls, lw=lw)
 
         if text:
-            ax.scatter(snr_idx, frac[snr_idx], s=10*fp.SCALE, c=color)
+            ax.scatter(snr_idx, frac[snr_idx], s=10*config.SCALE, c=color)
             ax.text(snr_idx + self.nstate*0.05, frac[snr_idx],
                     r'SNR $\approx$ 1',
-                    ha='left', va='top', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
+                    ha='left', va='top',
+                    fontsize=config.LABEL_FONTSIZE*config.SCALE,
                     color=color)
             ax.text(snr_idx + self.nstate*0.05, frac[snr_idx] - 0.075,
                     'n = %d' % snr_idx,
-                    ha='left', va='top', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
+                    ha='left', va='top',
+                    fontsize=config.LABEL_FONTSIZE*config.SCALE,
                     color=color)
             ax.text(snr_idx + self.nstate*0.05, frac[snr_idx] - 0.15,
                     r'$f_{DOFS}$ = %.2f' % frac[snr_idx],
-                    ha='left', va='top', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
+                    ha='left', va='top',
+                    fontsize=config.LABEL_FONTSIZE*config.SCALE,
                     color=color)
 
         ax = fp.add_legend(ax)
@@ -742,12 +745,12 @@ class ReducedRankInversion(Inversion):
             if r**2 <= 0.99:
                 ax.text(0.05, 0.85,
                         r'R$^2$ = %.2f' % r**2,
-                        fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
+                        fontsize=config.LABEL_FONTSIZE*config.SCALE,
                         transform=ax.transAxes)
             else:
                 ax.text(0.05, 0.85,
                         r'R$^2$ $>$ 0.99',
-                        fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
+                        fontsize=config.LABEL_FONTSIZE*fp.SCALE,
                         transform=ax.transAxes)
 
         if cbar:
@@ -767,10 +770,10 @@ class ReducedRankInversion(Inversion):
         xdata = getattr(self, attribute)
 
         # Get other plot labels
-        xlabel = kw.pop('xlabel', 'Truth')
+        xlabel = kw.pop('xlabel', 'Native Resolution')
         ylabel = kw.pop('ylabel', 'Estimate')
         label_kwargs = kw.pop('label_kwargs', {})
-        title = kw.pop('title', 'Estimated vs. True ' + attribute)
+        title = kw.pop('title', 'Estimated vs. Native Resolution ' + attribute)
         title_kwargs = kw.pop('title_kwargs', {})
 
         if type(compare_data) == dict:
@@ -1261,41 +1264,44 @@ class ReducedRankJacobian(ReducedRankInversion):
         self.shat_diag = np.diag(self.shat)
 
         # set the font sizes differently
-        title_kwargs = {'fontsize' : fp.SUBTITLE_FONTSIZE*fp.SCALE,
+        title_kwargs = {'fontsize' : config.SUBTITLE_FONTSIZE*config.SCALE,
                         'y' : 1.05}
-        label_kwargs = {'labelpad' : fp.LABEL_PAD}
+        label_kwargs = {'labelpad' : config.LABEL_PAD}
 
         fig, ax = fp.get_figax(rows=2, cols=2)
 
         # Jacobian
-        title = 'Jacobian Matrix\nElements',
+        # title = r'Jacobian Matrix\nElements',
         fig_kwargs = {'figax' : [fig, ax[0,0]]}
         fig, ax[0,0], c = true.plot_comparison('k', self.k, cbar=False,
-                                               title=title, xlabel='',
+                                               title='Jacobian Matrix\nElements',
+                                               xlabel='',
                                                fig_kwargs=fig_kwargs,
                                                title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
-        title = 'Posterior Emission\nScaling Factors'
+        # title = r'Posterior Emission\nScaling Factors'
         fig_kwargs = {'figax' : [fig, ax[0,1]]}
         fig, ax[0,1], c = true.plot_comparison('xhat', self.xhat, cbar=False,
-                                                title=title,
+                                                title='Posterior Emission\nScaling Factors',
                                                 xlabel='', ylabel='',
                                                fig_kwargs=fig_kwargs,
                                                title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
-        title = 'Posterior Variance'
+        # title = r'Posterior Variance'
         fig_kwargs = {'figax' : [fig, ax[1,0]]}
         fig, ax[1,0], c = true.plot_comparison('shat_diag', self.shat_diag,
-                                               cbar=False, title=title,
+                                               cbar=False,
+                                               title='Posterior Variance',
                                                ylabel='Estimate',
                                                fig_kwargs=fig_kwargs,
                                                title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
 
-        title = 'Averaging Kernel\nSensitivities'
+        # title = r'Averaging Kernel\nSensitivities'
         fig_kwargs={'figax' : [fig, ax[1,1]]}
         fig, ax[1,1], c = true.plot_comparison('dofs', self.dofs, cbar=False,
-                                               title=title, ylabel='',
+                                               title='Averaging Kernel\nSensitivities',
+                                               ylabel='',
                                                fig_kwargs=fig_kwargs,
                                                title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
@@ -1313,7 +1319,7 @@ class ReducedRankJacobian(ReducedRankInversion):
         fig01, ax = self.plot_comparison_inversion(true)
 
         # Compare spectra
-        fig02, ax = true.plot_info_frac(label='True',
+        fig02, ax = true.plot_info_frac(label='Native Resolution',
                                         color=fp.color(0),
                                         text=False)
         fig02, ax = self.plot_info_frac(fig_kwargs={'figax' : [fig02, ax]},
@@ -1331,7 +1337,7 @@ class ReducedRankJacobian(ReducedRankInversion):
               'vmax' : 0.1,
               'cmap' : 'RdBu_r',
               'add_colorbar' : False,
-              'title_kwargs' : {'fontsize' : fp.SUBTITLE_FONTSIZE*fp.SCALE},
+              'title_kwargs' : {'fontsize' : config.SUBTITLE_FONTSIZE*config.SCALE},
               'map_kwargs' : {'draw_labels' : False}}
         cbar_kwargs = {'ticks' : [-0.1, 0, 0.1]}
 
@@ -1356,35 +1362,37 @@ class ReducedRankJacobian(ReducedRankInversion):
         cbar = fp.format_cbar(cbar, **{'cbar_title' : 'Eigenvector Value'})
 
         # Add label
-        ax[0, 0].text(-0.2, 0.5, 'Truth', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
+        ax[0, 0].text(-0.3, 0.5, 'Native\nResolution',
+                      fontsize=config.LABEL_FONTSIZE*config.SCALE,
                       rotation=90, ha='center', va='center',
                       transform=ax[0,0].transAxes)
-        ax[1, 0].text(-0.2, 0.5, 'Estimate', fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
+        ax[1, 0].text(-0.3, 0.5, 'Estimate',
+                      fontsize=config.LABEL_FONTSIZE*config.SCALE,
                       rotation=90, ha='center', va='center',
                       transform=ax[1,0].transAxes)
 
-        # fig04
-        cbar_kwargs = {'ticks' : np.arange(-1, 4, 1),
-                       'title' : 'Scaling Factors'}
-        fig04, ax, c = self.plot_state('xhat',
-                                       clusters_plot,
-                                       default_value=1,
-                                       **{'title' : 'Posterior Emissions',
-                                          'cmap' : 'RdBu_r',
-                                          'vmin' : -1,
-                                          'vmax' : 3,
-                                          'cbar_kwargs' : cbar_kwargs})
+        # # fig04
+        # cbar_kwargs = {'ticks' : np.arange(-1, 4, 1),
+        #                'title' : 'Scaling Factors'}
+        # fig04, ax, c = self.plot_state('xhat',
+        #                                clusters_plot,
+        #                                default_value=1,
+        #                                **{'title' : 'Posterior Emissions',
+        #                                   'cmap' : 'RdBu_r',
+        #                                   'vmin' : -1,
+        #                                   'vmax' : 3,
+        #                                   'cbar_kwargs' : cbar_kwargs})
 
-        # fig05
-        cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
-        fig05, ax, c = self.plot_state('dofs', clusters_plot,
-                                       **{'title' : 'Averaging Kernel',
-                                          'cmap' : fp.cmap_trans('plasma'),
-                                          'vmin' : 0,
-                                          'vmax' : 0.1,#1,
-                                          'cbar_kwargs' : cbar_kwargs})
-        ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(self.a),
-                fontsize=fp.LABEL_FONTSIZE*fp.SCALE,
-                transform=ax.transAxes)
+        # # fig05
+        # cbar_kwargs = {'title' : r'$\partial\hat{x}/\partial x$'}
+        # fig05, ax, c = self.plot_state('dofs', clusters_plot,
+        #                                **{'title' : 'Averaging Kernel',
+        #                                   'cmap' : fp.cmap_trans('plasma'),
+        #                                   'vmin' : 0,
+        #                                   'vmax' : 0.1,#1,
+        #                                   'cbar_kwargs' : cbar_kwargs})
+        # ax.text(0.025, 0.05, 'DOFS = %.2f' % np.trace(self.a),
+        #         fontsize=config.LABEL_FONTSIZE*config.SCALE,
+        #         transform=ax.transAxes)
 
-        return fig01, fig02, fig03, fig04, fig05
+        return fig01, fig02, fig03 #, fig04, fig05
