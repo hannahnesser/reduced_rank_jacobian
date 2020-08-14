@@ -469,10 +469,15 @@ class ReducedRankInversion(Inversion):
             diff = np.abs(frac - pct_of_info)
             rank = np.argwhere(diff == np.min(diff))[0][0]
             print('Calculated rank from percent of information: %d' % rank)
+            print('     Percent of information: %.2f%%' % (100*pct_of_info))
+            print('     Signal-to-noise ratio: %.2f' % self.evals_h[rank])
         elif snr is not None:
+            frac = np.cumsum(self.evals_q/self.evals_q.sum())
             diff = np.abs(self.evals_h - snr)
             rank = np.argwhere(diff == np.min(diff))[0][0]
             print('Calculated rank from signal-to-noise ratio : %d' % rank)
+            print('     Percent of information: %.2f%%' % (100*frac[rank]))
+            print('     Signal-to-noise ratio: %.2f' % snr)
         elif rank is not None:
             print('Using defined rank: %d' % rank)
         return rank
@@ -1095,14 +1100,6 @@ class ReducedRankJacobian(ReducedRankInversion):
         new.rf = copy.deepcopy(self.rf)
         _, counts = np.unique(self.state_vector, return_counts=True)
 
-        # # Retrieve the prolongation operator associated with
-        # # this instance of the Jacobian for the rank specified
-        # # by the function call. These are the eigenvectors
-        # # that we will perturb.
-        # # Calculate the weight of each full element space as sum
-        # # of squares
-        # new.rank, significance = self.calculate_significance(pct_of_info)
-
         # If previously optimized, set significance to 0
         # if len(self.perturbed_cells) > 0:
         if np.any(counts > 1):
@@ -1118,28 +1115,14 @@ class ReducedRankJacobian(ReducedRankInversion):
                                                        n_cluster_size=  n_cluster_size)
         new.model_runs += new_runs
 
-        # Get the transformations that will allow us to reduce
-        # and restore dimension
-        # gamma, gamma_star = self.calculate_trans_ms(self.nstate)
-
         # We calculate the number of model runs and the counts of
         # each cluster
-        # old_elements = np.unique(self.state_vector)
         elements, counts = np.unique(new.state_vector, return_counts=True)
-        # if new.model_runs == 0:
-        #     new.model_runs = len(elements)
-        # else:
-        #     new.model_runs += (len(elements) - len(old_elements))
 
         # # Now update the Jacobian
-        # new.k = self.calculate_k(forward_model, new.state_vector, new.k)
         new.nstate = len(elements)
         new.calculate_k_ms(forward_model)
         new.calculate_prior_ms(xa_abs=xa_abs, sa_vec=sa_vec)
-
-        # check gamma and gamma star definitions
-        # ktest = forward_model @ gamma
-        # print(ktest ==  new.k)
 
         # Adjust the rf
         new.rf = self.rf*new.nstate/self.nstate
@@ -1153,14 +1136,8 @@ class ReducedRankJacobian(ReducedRankInversion):
         # And solve the inversion
         new.solve_inversion()
 
-        # # Adjust the clusters_plot
-        # clusters_plot = new.match_data_to_clusters(new.state_vector,
-        #                                            clusters_plot,
-        #                                            default_value=0)
-
         # And save a long xhat/shat/avker (start by saving them as
         # an unphysical value so that we can check for errors)
-
         new.xhat_long = 99*np.ones(len(new.state_vector))
         new.dofs_long = 99*np.ones(len(new.state_vector))
         for i in range(1, new.nstate + 1):
