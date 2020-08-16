@@ -749,12 +749,12 @@ class ReducedRankInversion(Inversion):
             _, _, r = self.calc_stats(xdata, compare_data)
             if r**2 <= 0.99:
                 ax.text(0.05, 0.85,
-                        r'R$^2$ = %.2f' % r**2,
+                        r'R = %.2f' % r,
                         fontsize=config.LABEL_FONTSIZE*config.SCALE,
                         transform=ax.transAxes)
             else:
                 ax.text(0.05, 0.85,
-                        r'R$^2$ $>$ 0.99',
+                        r'R $>$ 0.99',
                         fontsize=config.LABEL_FONTSIZE*fp.SCALE,
                         transform=ax.transAxes)
 
@@ -1001,14 +1001,17 @@ class ReducedRankJacobian(ReducedRankInversion):
     def calculate_k_ms(self, forward_model):
         k_ms = pd.DataFrame(forward_model)
         k_ms = k_ms.groupby(self.state_vector, axis=1).sum()
+        k_ms = k_ms.iloc[:, 1:]
         self.k = np.array(k_ms)
 
     def calculate_prior_ms(self, xa_abs, sa_vec):
         xa_abs_ms = pd.DataFrame(xa_abs).groupby(self.state_vector).sum()
+        xa_abs_ms = xa_abs_ms.iloc[1:]
 
         sa_vec_abs = pd.DataFrame(sa_vec*xa_abs)
         sa_vec_abs_ms = (sa_vec_abs**2).groupby(self.state_vector).sum()**0.5
         sa_vec_ms = sa_vec_abs_ms/xa_abs_ms
+        sa_vec_ms = sa_vec_ms.iloc[1:]
 
         self.xa_abs = np.array(xa_abs_ms).reshape(-1,)
         self.xa = np.ones(self.nstate).reshape(-1,)
@@ -1120,7 +1123,7 @@ class ReducedRankJacobian(ReducedRankInversion):
         elements, counts = np.unique(new.state_vector, return_counts=True)
 
         # # Now update the Jacobian
-        new.nstate = len(elements)
+        new.nstate = len(elements)-1
         new.calculate_k_ms(forward_model)
         new.calculate_prior_ms(xa_abs=xa_abs, sa_vec=sa_vec)
 
@@ -1138,8 +1141,8 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         # And save a long xhat/shat/avker (start by saving them as
         # an unphysical value so that we can check for errors)
-        new.xhat_long = 99*np.ones(len(new.state_vector))
-        new.dofs_long = 99*np.ones(len(new.state_vector))
+        new.xhat_long = np.ones(len(new.state_vector))
+        new.dofs_long = np.ones(len(new.state_vector))
         for i in range(1, new.nstate + 1):
             idx = np.where(new.state_vector == i)[0]
             new.xhat_long[idx] = new.xhat[i - 1]
