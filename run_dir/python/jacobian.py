@@ -7,9 +7,8 @@ from os.path import isfile, isdir, join
 import tqdm
 
 import sys
-sys.path.append('/Users/hannahnesser/Documents/Harvard/Research/Python')
+sys.path.append('./python')
 import clusters
-import inv_rr
 
 def build_jacobian(obs, emis=None, clusters_long=None, clusters_mapping=None):
     # get obs

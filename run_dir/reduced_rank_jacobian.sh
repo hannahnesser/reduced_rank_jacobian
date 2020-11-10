@@ -19,7 +19,7 @@ COPY_FORMAT_CODE=true
 
 # Copy all python code into the run directory
 mkdir -p python
-cp -r ../python/* ./python/
+cp -r ../python/*.py ./python/
 if [ $COPY_FORMAT_CODE = true ]
 then
   cp ${FORMAT_LOC}/format_plots.py ./python/

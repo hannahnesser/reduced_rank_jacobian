@@ -25,7 +25,7 @@ import cartopy
 
 # Import information for plotting in a consistent fashion
 import sys
-sys.path.append('../../Python/')
+sys.path.append('./python/')
 import format_plots as fp
 import config
 
