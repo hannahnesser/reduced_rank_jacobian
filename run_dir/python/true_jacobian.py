@@ -1,6 +1,6 @@
-import pandas as pd 
+import pandas as pd
 import numpy as np
-import xarray as xr 
+import xarray as xr
 import sys
 from os.path import join
 from os import listdir
@@ -25,7 +25,7 @@ if jac_str + '_true.nc' not in listdir(input_dir):
     for col in delta_obs_true:
         col_name = col.split('_')[-1]
         delta_obs_true = delta_obs_true.rename(columns={col : col_name})
-        
+
     delta_obs_true = delta_obs_true.unstack().reset_index()
     delta_obs_true = delta_obs_true.rename(columns={'level_0' : 'NSV',
                                                     'NNN' : 'Nobs',
@@ -46,7 +46,7 @@ if jac_str + '_true.nc' not in listdir(input_dir):
 
     # Eliminate glint
     if len(glint_data) > 1:
-        base_full = pd.read_csv(join(input_dir, glint_data), 
+        base_full = pd.read_csv(join(input_dir, glint_data),
                                delim_whitespace=True,
                                header=0)
         y_glint = base_full['NNN'][base_full['GLINT']==True]

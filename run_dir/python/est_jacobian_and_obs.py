@@ -1,9 +1,6 @@
 from os import listdir
 from os.path import join
 import sys
-sys.path.append('.')
-import jacobian as j
-import inv_plot
 
 import xarray as xr
 import pandas as pd
@@ -11,7 +8,8 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-rcParams['font.family'] = 'serif'
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = 'Arial'
 rcParams['font.size'] = 14
 colors = plt.cm.get_cmap('inferno', lut=9)
 
@@ -22,7 +20,33 @@ resolution = str(sys.argv[3])
 model_emissions = sys.argv[4]
 sat_obs = sys.argv[5]
 
-if not set([jac_str + '_est.nc', 
+def get_delta_emis(clusters_long, emis_loc=None, relative=False):
+    if (emis_loc is not None) & (~relative):
+        emis = get_emis(emis_loc)
+
+        # Join in the long clusters file
+        emis = emis.to_dataset(name='emis')
+        emis['NSV'] = clusters_long
+
+        # Calculate the delta emissions
+        delta_emis = 0.5*emis.groupby('NSV').sum(xr.ALL_DIMS)
+        delta_emis = delta_emis.where(delta_emis.NSV > 0, drop=True)
+
+        # Change to dataarray
+        delta_emis = delta_emis['emis']
+
+    elif (emis_loc is None) & relative:
+        SV_elems = np.unique(clusters_long)[1:]
+        delta_emis = 0.5*np.ones(len(SV_elems))
+        delta_emis = xr.DataArray(delta_emis, dims=('NSV'), coords={'NSV' : SV_elems})
+
+    else:
+        print('Improper inputs.')
+        sys.exit()
+
+    return delta_emis
+
+if not set([jac_str + '_est.nc',
             jac_str + '_est_sparse.nc',
             'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(listdir(input_dir)):
     print('Retrieving observational data and estimated Jacobian.')
@@ -30,8 +54,8 @@ if not set([jac_str + '_est.nc',
     clusters = xr.open_dataarray(join(input_dir, 'clusters_' + resolution + '.nc'))
     clusters_reduced = xr.open_dataarray(join(input_dir, 'clusters_' + resolution + '_plot.nc'))
 
-    emis = j.get_delta_emis(clusters_long=clusters, 
-                            emis_loc=join(input_dir, model_emissions))
+    emis = get_delta_emis(clusters_long=clusters,
+                          emis_loc=join(input_dir, model_emissions))
 
     obs = pd.read_csv(join(input_dir, sat_obs), delim_whitespace=True, header=0)
 
@@ -47,23 +71,23 @@ if not set([jac_str + '_est.nc',
 
     # return to making the observations and estimated jacobian
     obs = obs[['NNN', 'LON', 'LAT', 'GOSAT', 'model']]
-    obs = obs.rename(columns={'LON' : 'lon', 
+    obs = obs.rename(columns={'LON' : 'lon',
                               'LAT' : 'lat',
                               'NNN' : 'Nobs'})
 
     lat_width = np.diff(clusters_reduced.coords['lat'].values)[0]/2
     lat_edges = clusters_reduced.coords['lat'].values - lat_width
     lat_edges = np.append(lat_edges, clusters_reduced.coords['lat'].values[-1]+lat_width)
-    obs['lat_bin'] = pd.cut(obs['lat'], 
-                            bins=lat_edges, 
+    obs['lat_bin'] = pd.cut(obs['lat'],
+                            bins=lat_edges,
                             labels=clusters_reduced.coords['lat'].values)
     obs['lat_bin'] = obs['lat_bin'].astype(float)
 
     lon_width = np.diff(clusters_reduced.coords['lon'].values)[0]/2
     lon_edges = clusters_reduced.coords['lon'].values - lon_width
     lon_edges = np.append(lon_edges, clusters_reduced.coords['lon'].values[-1]+lon_width)
-    obs['lon_bin'] = pd.cut(obs['lon'], 
-                            bins=lon_edges, 
+    obs['lon_bin'] = pd.cut(obs['lon'],
+                            bins=lon_edges,
                             labels=clusters_reduced.coords['lon'].values)
     obs['lon_bin'] = obs['lon_bin'].astype(float)
 
@@ -156,16 +180,18 @@ if not set([jac_str + '_est.nc',
             cond2 = cond2.where(cond3, drop=True).astype(bool)
             cond1 = cond1.where(cond3, drop=True).astype(bool)
             cond0 = cond0.where(cond3, drop=True).astype(bool)
-            
+
             pert_nb = emis_pert.where(cond3, drop=True)
 
             # Set the outer ring
+            # we use 10% of the emissions (0.1) distributed over the number of
+            # outer ring grid boxes (cond3.sum()-cond2.sum())
             pert_nb['EmisCH4_Total'] *= 0.1/(cond3.sum()-cond2.sum())*pert_loc['EmisCH4_Total'].values[0]/pert_nb['EmisCH4_Total']
-            
+
             # Set the next ring
             pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond2,
                                                                       0.2/(cond2.sum()-cond1.sum())*pert_loc['EmisCH4_Total'].values[0])
-            
+
             # And the next
             pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond1,
                                                                       0.3/(cond1.sum()-cond0.sum())*pert_loc['EmisCH4_Total'].values[0])
@@ -173,7 +199,7 @@ if not set([jac_str + '_est.nc',
             # and the inner ring
             pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond0,
                                                                       0.4*pert_loc['EmisCH4_Total'].values[0])
-            
+
             W = pert_nb['AREA']**0.5 # m
             pert_nb[i] = 1e9*Mair*pert_nb['EmisCH4_Total']*g/(U*W*P)
             pert_nb = pert_nb[i].to_dataframe().reset_index()

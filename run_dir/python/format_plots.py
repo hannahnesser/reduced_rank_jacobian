@@ -25,29 +25,21 @@ import cartopy
 import cartopy.feature
 from cartopy.mpl.patch import geos_to_path
 
-
-# Figure sizes
-SCALE = 2
-# BASE_FIG_SIZE = 6
-BASE_WIDTH = 8/2
-BASE_HEIGHT = 4.5/2
-
-# Fontsizes
-TITLE_FONTSIZE = 18
-SUBTITLE_FONTSIZE = 14
-LABEL_FONTSIZE = 12
-TICK_FONTSIZE = 10
-
-# Position
-TITLE_LOC = 1.1
-CBAR_PAD = 0.05
-LABEL_PAD = 20
-CBAR_LABEL_PAD = 75
+# sys.path.append('.')
+import config
 
 # Other font details
-rcParams['font.family'] = 'serif'
-rcParams['font.size'] = LABEL_FONTSIZE*SCALE
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = 'AppleGothic'
+rcParams['font.size'] = config.LABEL_FONTSIZE*config.SCALE
 rcParams['text.usetex'] = True
+# rcParams['mathtext.fontset'] = 'stixsans'
+rcParams['text.latex.preamble'] = r'\usepackage{cmbright}'
+rcParams['axes.titlepad'] = config.TITLE_PAD
+
+from matplotlib.font_manager import findfont, FontProperties
+font = findfont(FontProperties(family=['sans-serif']))
+print(font)
 
 def color(k, cmap='inferno', lut=10):
     c = plt.cm.get_cmap(cmap, lut=lut)
@@ -72,8 +64,8 @@ def cmap_trans_center(cmap, ncolors=300, nalpha=20):
     half_l = math.floor((ncolors - nalpha)/2)
     half_r = math.ceil((ncolors - nalpha)/2)
     color_array[:,-1] = np.concatenate((np.ones(half_l),
-                                        np.linspace(1, 0, nalpha/2),
-                                        np.linspace(0, 1, nalpha/2),
+                                        np.linspace(1, 0, int(nalpha/2)),
+                                        np.linspace(0, 1, int(nalpha/2)),
                                         np.ones(half_r)))
 
     # create a colormap object
@@ -82,21 +74,12 @@ def cmap_trans_center(cmap, ncolors=300, nalpha=20):
 
     return map_object
 
-def get_figsize(aspect, rows, cols,
-                max_width=BASE_WIDTH*SCALE,
-                max_height=BASE_HEIGHT*SCALE):
-    # if rows > 1 or cols > 1:
-    #     factor = max(rows, cols)/2
-    # else:
-    #     factor = 1
+def get_figsize(aspect, rows, cols, **fig_kwargs):
+    # Set default kwarg values
+    max_width = fig_kwargs.get('max_width', config.BASE_WIDTH*config.SCALE)
+    max_height = fig_kwargs.get('max_height', config.BASE_HEIGHT*config.SCALE)
 
-    # if cols > 1:
-    #     added_width = 1.25
-    # else:
-    #     added_width = 1
-
-    # aspect *= added_width
-
+    # Get figsize
     if aspect > 1: # width > height
         figsize = (max_width,
                    max_width/aspect)
@@ -105,7 +88,8 @@ def get_figsize(aspect, rows, cols,
                    max_height)
     return figsize
 
-def get_aspect(rows, cols, aspect=None, maps=False, lats=None, lons=None):
+def get_aspect(rows, cols, aspect=None,
+               maps=False, lats=None, lons=None):
     if maps:
         aspect = np.cos(np.mean([np.min(lats), np.max(lats)])*np.pi/180)
         xsize = np.ptp([np.max(lons), np.min(lons)])*aspect
@@ -113,9 +97,11 @@ def get_aspect(rows, cols, aspect=None, maps=False, lats=None, lons=None):
         aspect = xsize/ysize
     return aspect*cols/rows
 
-def make_axes(rows=1, cols=1, aspect=None, maps=False, lats=None, lons=None):
+def make_axes(rows=1, cols=1, aspect=None,
+              maps=False, lats=None, lons=None,
+              **fig_kwargs):
     aspect = get_aspect(rows, cols, aspect, maps, lats, lons)
-    figsize = get_figsize(aspect, rows, cols)
+    figsize = get_figsize(aspect, rows, cols, **fig_kwargs)
     kw = {}
     if maps:
         kw['subplot_kw'] = {'projection' : ccrs.PlateCarree()}
@@ -127,6 +113,7 @@ def make_axes(rows=1, cols=1, aspect=None, maps=False, lats=None, lons=None):
     return fig, ax
 
 def add_cax(fig, ax):
+    # should be updated to infer cbar width and cbar_pad_inches
     try:
         axis = ax[-1, -1]
         height = ax[0, -1].get_position().y1 - ax[-1, -1].get_position().y0
@@ -139,7 +126,7 @@ def add_cax(fig, ax):
         height = ax.get_position().height
 
     # x0
-    cbar_pad_inches = 0.75
+    cbar_pad_inches = 0.25
     fig_width = fig.get_size_inches()[0]
     x0_init = axis.get_position().x1
     x0 = (fig_width*x0_init + cbar_pad_inches)/fig_width
@@ -148,7 +135,7 @@ def add_cax(fig, ax):
     y0 = axis.get_position().y0
 
     # Width
-    cbar_width_inches = 0.2
+    cbar_width_inches = 0.1
     width = cbar_width_inches/fig_width
 
     # Make axis
@@ -157,12 +144,12 @@ def add_cax(fig, ax):
     return cax
 
 def get_figax(rows=1, cols=1, aspect=1,
-              maps=False, lats=None, lons=None, kw={}):
-    n = len(kw)
-    if 'figax' in kw.keys():
-        fig, ax = kw.pop('figax')
+              maps=False, lats=None, lons=None,
+              figax=None, **fig_kwargs):
+    if figax is not None:
+        fig, ax = figax
     else:
-        fig, ax = make_axes(rows, cols, aspect, maps, lats, lons)
+        fig, ax = make_axes(rows, cols, aspect, maps, lats, lons, **fig_kwargs)
 
     if (rows > 1) or (cols > 1):
         for axis in ax.flatten():
@@ -171,26 +158,50 @@ def get_figax(rows=1, cols=1, aspect=1,
     else:
         ax.set_facecolor('0.98')
 
-    if n > 0:
-        return fig, ax, kw
-    else:
-        return fig, ax
+    return fig, ax
 
-def add_labels(ax, xlabel, ylabel,
-               fontsize=LABEL_FONTSIZE*SCALE,
-               labelsize=TICK_FONTSIZE*SCALE,
-               labelpad=LABEL_PAD):
-    ax.set_xlabel(xlabel, fontsize=fontsize, labelpad=labelpad)
-    ax.set_ylabel(ylabel, fontsize=fontsize, labelpad=labelpad)
+def add_labels(ax, xlabel, ylabel, **label_kwargs):
+    # Set default values
+    label_kwargs['fontsize'] = label_kwargs.get('fontsize',
+                                                config.LABEL_FONTSIZE*config.SCALE)
+    label_kwargs['labelpad'] = label_kwargs.get('labelpad',
+                                                config.LABEL_PAD)
+    labelsize = label_kwargs.pop('labelsize',
+                                 config.TICK_FONTSIZE*config.SCALE)
+
+    # Set labels
+    ax.set_xlabel(xlabel, **label_kwargs)
+    ax.set_ylabel(ylabel, **label_kwargs)
     ax.tick_params(axis='both', which='both', labelsize=labelsize)
     return ax
 
-def add_legend(ax, frameon=False, fontsize=LABEL_FONTSIZE*SCALE, **kw):
-    ax.legend(frameon=frameon, fontsize=fontsize, **kw)
+def add_legend(ax, **legend_kwargs):
+    legend_kwargs['frameon'] = legend_kwargs.get('frameon', False)
+    legend_kwargs['fontsize'] = legend_kwargs.get('fontsize',
+                                                  (config.LABEL_FONTSIZE*
+                                                   config.SCALE))
+    ax.legend(**legend_kwargs)
     return ax
 
-def add_title(ax, title, y=TITLE_LOC, fontsize=TITLE_FONTSIZE*SCALE, **kw):
-    ax.set_title(title, y=y, fontsize=fontsize, **kw)
+def add_title(ax, title, **title_kwargs):
+    title_kwargs['y'] = title_kwargs.get('y', config.TITLE_LOC)
+    title_kwargs['pad'] = title_kwargs.get('pad', config.TITLE_PAD)
+    title_kwargs['fontsize'] = title_kwargs.get('fontsize',
+                                                config.TITLE_FONTSIZE*config.SCALE)
+    title_kwargs['va'] = title_kwargs.get('va', 'bottom')
+    ax.set_title(title, **title_kwargs)
+    return ax
+
+def add_subtitle(ax, subtitle, **kwargs):
+    y = kwargs.pop('y', config.TITLE_LOC)
+    kwargs['ha'] = kwargs.get('ha', 'center')
+    kwargs['va'] = kwargs.get('va', 'bottom')
+    kwargs['xytext'] = kwargs.get('xytext', (0, config.TITLE_PAD))
+    kwargs['textcoords'] = kwargs.get('textcoords', 'offset points')
+    kwargs['fontsize'] = kwargs.get('fontsize',
+                                    config.SUBTITLE_FONTSIZE*config.SCALE)
+    subtitle = ax.annotate(s=subtitle, xy=(0.5, y), xycoords='axes fraction',
+                           **kwargs)
     return ax
 
 def get_square_limits(xdata, ydata):
@@ -212,27 +223,36 @@ def get_square_limits(xdata, ydata):
 
     return xlim, ylim, xy, dmin, dmax
 
-def format_map(ax, lats, lons, fontsize=TICK_FONTSIZE*SCALE, draw_labels=True):
+def format_map(ax, lats, lons,
+               fontsize=config.TICK_FONTSIZE*config.SCALE,
+               **gridline_kwargs):
+    # Get kwargs
+    gridline_kwargs['draw_labels'] = gridline_kwargs.get('draw_labels', True)
+    gridline_kwargs['color'] = gridline_kwargs.get('color', 'grey')
+    gridline_kwargs['linestyle'] = gridline_kwargs.get('linestyle', ':')
+
+    # Format
     ax.set_ylim(min(lats), max(lats))
     ax.set_xlim(min(lons), max(lons))
-    ax.add_feature(cartopy.feature.OCEAN, facecolor='0.98')
-    ax.add_feature(cartopy.feature.LAND, facecolor='0.98')
-    ax.coastlines(color='grey')
-    gl = ax.gridlines(linestyle=':', draw_labels=draw_labels, color='grey')
-    gl.xlabel_style = {'fontsize' : fontsize}
-    gl.ylabel_style = {'fontsize' : fontsize}
+    ax.add_feature(cartopy.feature.OCEAN, facecolor='0.98', linewidth=0.5)
+    ax.add_feature(cartopy.feature.LAND, facecolor='0.98', linewidth=0.5)
+    ax.coastlines(color='grey', linewidth=0.5)
+
+    # gl = ax.gridlines(**gridline_kwargs)
+    # gl.xlabel_style = {'fontsize' : fontsize}
+    # gl.ylabel_style = {'fontsize' : fontsize}
     return ax
 
 def format_cbar(cbar, cbar_title=''):
-    # cbar.set_label(cbar_title, fontsize=BASEFONT*SCALE,
-    #                labelpad=CBAR_LABEL_PAD)
+    # cbar.set_label(cbar_title, fontsize=BASEFONT*config.SCALE,
+    #                labelpad=CBAR_config.LABEL_PAD)
     cbar.ax.text(5.25, 0.5, cbar_title,
                  ha='center', va='center',
                  rotation='vertical',
-                 fontsize=LABEL_FONTSIZE*SCALE,
+                 fontsize=config.LABEL_FONTSIZE*config.SCALE,
                  transform=cbar.ax.transAxes)
     cbar.ax.tick_params(axis='both', which='both',
-                        labelsize=TICK_FONTSIZE*SCALE)
+                        labelsize=config.TICK_FONTSIZE*config.SCALE)
     return cbar
 
 def plot_one_to_one(ax):
@@ -243,5 +263,7 @@ def plot_one_to_one(ax):
     return ax
 
 def save_fig(fig, loc, name):
-    fig.savefig(join(loc, name + '.png'), bbox_inches='tight', dpi=300)
+    fig.savefig(join(loc, name + '.png'),
+                bbox_inches='tight', dpi=500,
+                transparent=True)
     print('Saved %s' % name + '.png')

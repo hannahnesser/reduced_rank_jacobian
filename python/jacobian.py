@@ -152,32 +152,6 @@ def get_emis_frac(emis_loc, clusters1, clusters2):
     return delta_emis
 
 
-def get_delta_emis(clusters_long, emis_loc=None, relative=False):
-    if (emis_loc is not None) & (~relative):
-        emis = get_emis(emis_loc)
-
-        # Join in the long clusters file
-        emis = emis.to_dataset(name='emis')
-        emis['NSV'] = clusters_long
-
-        # Calculate the delta emissions
-        delta_emis = 0.5*emis.groupby('NSV').sum(xr.ALL_DIMS)
-        delta_emis = delta_emis.where(delta_emis.NSV > 0, drop=True)
-
-        # Change to dataarray
-        delta_emis = delta_emis['emis']
-
-    elif (emis_loc is None) & relative:
-        SV_elems = np.unique(clusters_long)[1:]
-        delta_emis = 0.5*np.ones(len(SV_elems))
-        delta_emis = xr.DataArray(delta_emis, dims=('NSV'), coords={'NSV' : SV_elems})
-
-    else:
-        print('Improper inputs.')
-        sys.exit()
-
-    return delta_emis
-
 def get_emis(emis_loc):
     emis = xr.open_dataset(emis_loc)
 
@@ -195,43 +169,6 @@ def get_emis(emis_loc):
 
     return emis
 
-def get_error_emis(error_emis_loc, emis_loc, clusters_long):
-    # Load absolute emissions
-    xa_abs = get_emis(emis_loc)
-    xa_abs = xa_abs.to_dataset(name='emis')
-
-    sa = xr.open_dataset(error_emis_loc)['data']
-
-    # Convert to absolute
-    sa_abs = sa*xa_abs
-    sa_abs['NSV'] = clusters_long
-
-    # Group by NSV and add in quadrature
-    sa_vec = sa_abs.groupby('NSV').apply(add_quadrature)
-    sa_vec = sa_vec.where(sa_vec.coords['NSV'] != 0, drop=True)
-    sa_vec = sa_vec['emis']
-
-    # Make relative: import absolute emisssions
-    xa_abs['NSV'] = clusters_long
-    xa_abs = xa_abs.groupby('NSV').sum(xr.ALL_DIMS)
-    xa_abs = xa_abs.where(xa_abs.NSV > 0, drop=True)
-    xa_abs = xa_abs['emis']
-    # sa_vec /= xa_abs
-
-    # Make relative
-    sa_vec /= xa_abs
-
-    # And set a threshold
-    sa_vec.values[sa_vec >= 0.5] = 0.5
-
-    # Sigh just set them all to 50% because we can't actually
-    # add relative errors in quadrature, silly.
-    # sa_vec.values = 0.5*np.ones(len(sa_vec))
-
-    sa_vec = sa_vec**2 # get variances from errors
-
-    return sa_vec
-
 def add_quadrature(x):
     return np.sqrt((x**2).sum())
 
@@ -243,31 +180,6 @@ def get_error_obs(error_obs_loc, delta_obs):
 
     return so_vec['SO']
 
-def get_prior(clusters_long, emis_loc=None, relative=None):
-    if (emis_loc is not None) & (~relative):
-        xa = get_emis(emis_loc)
-
-        # Join in the long clusters file
-        xa = xa.to_dataset(name='emis')
-        xa['NSV'] = clusters_long
-
-        # Add together emissions in state vector elements
-        xa = xa.groupby('NSV').sum(xr.ALL_DIMS)
-        xa = xa.where(xa.NSV > 0, drop=True)
-
-        # Change to dataarray
-        xa = xa['emis']
-
-    elif (emis_loc is None) & relative:
-        SV_elems = np.unique(clusters_long)[1:]
-        xa = np.ones(len(SV_elems))
-        xa = xr.DataArray(xa, dims=('NSV'), coords={'NSV' : SV_elems})
-
-    else:
-        print('Improper inputs.')
-        sys.exit()
-
-    return xa
 
 def get_obs(obs_loc, delta_obs=None):
     obs = pd.read_csv(obs_loc, delim_whitespace=True,

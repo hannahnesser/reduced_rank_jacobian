@@ -2,9 +2,9 @@ import xarray as xr
 import numpy as np
 import math
 
-import sys
-sys.path.append('.')
-import jacobian
+# import sys
+# sys.path.append('.')
+# import jacobian
 
 
 def open_clusters(cluster_path):
@@ -50,10 +50,10 @@ def reduce_SV_elements(clusters_res1, clusters_res2, delta_obs=None):
     # Recall delta_obs is at the finest resolution only.
     if delta_obs is not None:
         # Find the total effect of every perturbation experiment. Where these are equal
-        # to 0, the perturbation had no effect on the observations, and 
+        # to 0, the perturbation had no effect on the observations, and
         # we want to eliminate those state vector elements.
 
-        # We can only use the original cluster mapping, since that is what 
+        # We can only use the original cluster mapping, since that is what
         # matches the delta_obs matrix. So, if the number of clusters in the
         # finest resolution cluster xarray (c2) does not match the NSV dimension
         # of delta_obs, we exit the routine.
@@ -78,7 +78,7 @@ def reduce_SV_elements(clusters_res1, clusters_res2, delta_obs=None):
     c2_s.values[(c1 == 0) | (c2 == 0)] = 0
 
     # drop incomplete squares (i.e. if there are not n boxes with values > 0
-    # in one of the larger grid boxes (c2), then set all the boxes at both 
+    # in one of the larger grid boxes (c2), then set all the boxes at both
     # resolutions to 0)
     for i, c in enumerate(np.unique(c2)[1:]):
         if c1.where(c2 == c, drop=True).min() == 0:
@@ -95,7 +95,7 @@ def reduce_SV_elements(clusters_res1, clusters_res2, delta_obs=None):
         delta_obs = delta_obs.where(delta_obs.sum(dim='NSV') > 0, drop=True)
 
         # then return everything
-        return c1_s, c2_s, delta_obs       
+        return c1_s, c2_s, delta_obs
     else:
         return c1_s, c2_s
 
@@ -136,7 +136,8 @@ if __name__ == '__main__':
 
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
-    rcParams['font.family'] = 'serif'
+    rcParams['font.family'] = 'sans-serif'
+    rcParams['font.sans-serif'] = 'AppleGothic'
     rcParams['font.size'] = 14
 
     input_dir = str(sys.argv[1])
@@ -170,7 +171,8 @@ if __name__ == '__main__':
 
 #     import matplotlib.pyplot as plt
 #     from matplotlib import rcParams
-#     rcParams['font.family'] = 'serif'
+#     rcParams['font.family'] = 'sans-serif'
+#     rcParams['font.sans-serif'] = 'Arial'
 #     rcParams['font.size'] = 14
 
 #     input_dir = str(sys.argv[1])
@@ -186,7 +188,7 @@ if __name__ == '__main__':
 #         c_small = open_clusters(join(input_dir, c_in + '_' + c_small_str + '.nc'))
 #         c_large = open_clusters(join(input_dir, c_in + '_' + c_large_str + '.nc'))
 
-#         # We only want to work in the domain where we have full clusters 
+#         # We only want to work in the domain where we have full clusters
 #         # at both resolutions
 #         c_small_s, c_large_s = reduce_SV_elements(c_small, c_large)
 

@@ -30,9 +30,13 @@ import format_plots as fp
 import config
 
 # Other font details
-rcParams['font.family'] = 'serif'
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = 'AppleGothic'
 rcParams['font.size'] = config.LABEL_FONTSIZE*config.SCALE
 rcParams['text.usetex'] = True
+# rcParams['mathtext.fontset'] = 'stixsans'
+rcParams['text.latex.preamble'] = r'\usepackage{cmbright}'
+rcParams['axes.titlepad'] = 0
 
 '''
 This class creates an inversion object that contains the quantities
@@ -363,6 +367,7 @@ class Inversion:
         title_kwargs = kw.pop('title_kwargs', {})
         map_kwargs = kw.pop('map_kwargs', {})
         kw['colors'] = kw.pop('colors', 'black')
+        kw['linewidths'] = kw.pop('linewidths', 1)
 
         # Plot
         nstate = len(np.unique(self.state_vector)[1:])
@@ -460,26 +465,27 @@ class ReducedRankInversion(Inversion):
     ########################################
 
     def get_rank(self, pct_of_info=None, rank=None, snr=None):
+        frac = np.cumsum(self.evals_q/self.evals_q.sum())
         if sum(x is not None for x in [pct_of_info, rank, snr]) > 1:
             raise AttributeError('Conflicting arguments provided to determine rank.')
         elif sum(x is not None for x in [pct_of_info, rank, snr]) == 0:
             raise AttributeError('Must provide one of pct_of_info, rank, or snr.')
         elif pct_of_info is not None:
-            frac = np.cumsum(self.evals_q/self.evals_q.sum())
             diff = np.abs(frac - pct_of_info)
             rank = np.argwhere(diff == np.min(diff))[0][0]
             print('Calculated rank from percent of information: %d' % rank)
-            print('     Percent of information: %.2f%%' % (100*pct_of_info))
+            print('     Percent of information: %.4f%%' % (100*pct_of_info))
             print('     Signal-to-noise ratio: %.2f' % self.evals_h[rank])
         elif snr is not None:
-            frac = np.cumsum(self.evals_q/self.evals_q.sum())
             diff = np.abs(self.evals_h - snr)
             rank = np.argwhere(diff == np.min(diff))[0][0]
             print('Calculated rank from signal-to-noise ratio : %d' % rank)
-            print('     Percent of information: %.2f%%' % (100*frac[rank]))
+            print('     Percent of information: %.4f%%' % (100*frac[rank]))
             print('     Signal-to-noise ratio: %.2f' % snr)
         elif rank is not None:
             print('Using defined rank: %d' % rank)
+            print('     Percent of information: %.4f%%' % (100*frac[rank]))
+            print('     Signal-to-noise ratio: %.2f' % self.evals_h[rank])
         return rank
 
     def pph(self):
@@ -749,12 +755,12 @@ class ReducedRankInversion(Inversion):
             _, _, r = self.calc_stats(xdata, compare_data)
             if r**2 <= 0.99:
                 ax.text(0.05, 0.85,
-                        r'R$^2$ = %.2f' % r**2,
+                        r'R = %.2f' % r,
                         fontsize=config.LABEL_FONTSIZE*config.SCALE,
                         transform=ax.transAxes)
             else:
                 ax.text(0.05, 0.85,
-                        r'R$^2$ $>$ 0.99',
+                        r'R $>$ 0.99',
                         fontsize=config.LABEL_FONTSIZE*fp.SCALE,
                         transform=ax.transAxes)
 
@@ -912,14 +918,16 @@ class ReducedRankJacobian(ReducedRankInversion):
         return labels
 
     def aggregate_cells_kmeans(self, clusters_plot,
-                               n_cells, n_cluster_size=None):
+                               n_cells, n_cluster_size=None,
+                               dofs_e=None):
         print('... Generating multiscale grid ...')
-        # Get the indices associated with the most significant
-        # grid boxes
-        sig_idx = self.dofs.argsort()[::-1]
 
         # If first aggregation
         if len(self.state_vector) == self.nstate:
+            # Get the indices associated with the most significant
+            # grid boxes
+            sig_idx = self.dofs.argsort()[::-1]
+
             new_sv = np.zeros(self.nstate)
 
             # Iterate through n_cells
@@ -944,6 +952,26 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         # If second aggregation (i.e. disaggregation)
         else:
+            # expected DOFS
+            # Group the previous estimate of the DOFS by the state vector
+            dofs_e = pd.DataFrame(copy.deepcopy(dofs_e))
+            dofs_e = dofs_e.groupby(copy.deepcopy(self.state_vector)).sum()
+            dofs_e = np.array(dofs_e).reshape(-1,)
+
+            # Normallize by the number of grid cellls in each cluster
+            _, count = np.unique(self.state_vector, return_counts=True)
+            dofs_per_cell_e = dofs_e/count
+
+            # Calculate the difference (absolute and relative)
+            dofs_diff = self.dofs - dofs_per_cell_e
+            dofs_diff_rel = dofs_diff/dofs_per_cell_e
+
+            # Ignore grid cells that are already at native resolution
+            dofs_diff[count == 1] = 0
+
+            # Get the indices associated with the largest differences
+            sig_idx = dofs_diff.argsort()[::-1] + 1
+
             new_sv = copy.deepcopy(self.state_vector)
             count = 0
             i = 0
@@ -1014,14 +1042,6 @@ class ReducedRankJacobian(ReducedRankInversion):
         self.xa = np.ones(self.nstate).reshape(-1,)
         self.sa_vec = np.array(sa_vec_ms).reshape(-1,)
 
-    # def calculate_sa_vec_ms(self):
-    #     # sa_vec_ms = pd.DataFrame(self.sa_vec)
-    #     # sa_vec_ms = (sa_vec_ms**2).groupby(self.state_vector).sum()**0.5
-    #     # self.sa_vec = np.array(sa_vec_ms).reshape(-1,)
-    #     # self.sa_vec = 0.5*np.ones(self.nstate).reshape(-1,)
-    #     sa_vec_abs = pd.DataFrame(self.sa_vec*self.xa_abs)
-    #     sa_vec_abs = (sa_vec_abs**2).groupby(self.state_vector).sum()**0.5
-
     def calculate_trans_ms(self, nstate_native):
         gamma = np.zeros((self.nstate, nstate_native))
         for i in range(self.nstate):
@@ -1044,10 +1064,11 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         return rank, significance
 
-    def update_jacobian_ms(self, forward_model, xa_abs, sa_vec, clusters_plot,
+    def update_jacobian_rd(self, forward_model, xa_abs, sa_vec, clusters_plot,
                            pct_of_info=None, rank=None, snr=None,
                            n_cells=[100, 200],
                            n_cluster_size=[1, 2],
+                           dofs_e=None,
                            k_base=None):#, #threshold=0,
                         # perturbation_factor=0.5):
         '''
@@ -1112,7 +1133,8 @@ class ReducedRankJacobian(ReducedRankInversion):
         # elements as dictated by n_cells and n_cluster_size.
         new.state_vector, new_runs = new.aggregate_cells_kmeans(clusters_plot,
                                                        n_cells=n_cells,
-                                                       n_cluster_size=  n_cluster_size)
+                                                       n_cluster_size=  n_cluster_size,
+                                                       dofs_e=dofs_e)
         new.model_runs += new_runs
 
         # We calculate the number of model runs and the counts of
@@ -1138,8 +1160,8 @@ class ReducedRankJacobian(ReducedRankInversion):
 
         # And save a long xhat/shat/avker (start by saving them as
         # an unphysical value so that we can check for errors)
-        new.xhat_long = 99*np.ones(len(new.state_vector))
-        new.dofs_long = 99*np.ones(len(new.state_vector))
+        new.xhat_long = np.ones(len(new.state_vector))
+        new.dofs_long = np.zeros(len(new.state_vector))
         for i in range(1, new.nstate + 1):
             idx = np.where(new.state_vector == i)[0]
             new.xhat_long[idx] = new.xhat[i - 1]
@@ -1213,8 +1235,10 @@ class ReducedRankJacobian(ReducedRankInversion):
         akeys = [k for k in dir(self_f) if (k == 'a') or (k[:2] == 'a_')]
 
         for obj in [true_f, self_f]:
-            # update jacobian
+            # update jacobian and DOFS
             setattr(obj, 'k', getattr(obj, 'k')[:, mask])
+            setattr(obj, 'dofs', getattr(obj, 'dofs')[mask])
+
             for keylist in [skeys, xkeys, akeys]:
                 for k in keylist:
                     try:
@@ -1240,10 +1264,10 @@ class ReducedRankJacobian(ReducedRankInversion):
         true.shat_diag = np.diag(true.shat)
         self.shat_diag = np.diag(self.shat)
 
-        # set the font sizes differently
-        title_kwargs = {'fontsize' : config.SUBTITLE_FONTSIZE*config.SCALE,
-                        'y' : 1.05}
-        label_kwargs = {'labelpad' : config.LABEL_PAD}
+        # # set the font sizes differently
+        # title_kwargs = {'fontsize' : config.SUBTITLE_FONTSIZE*config.SCALE,
+        #                 'y' : 1.05}
+        label_kwargs = {'labelpad' : config.LABEL_PAD/2}
 
         fig, ax = fp.get_figax(rows=2, cols=2)
 
@@ -1253,25 +1277,28 @@ class ReducedRankJacobian(ReducedRankInversion):
         fig, ax[0,0], c = true.plot_comparison('k', self.k, cbar=False,
                                                title='Jacobian Matrix\nElements',
                                                xlabel='',
+                                               ylabel='Reduced Rank',
                                                fig_kwargs=fig_kwargs,
-                                               title_kwargs=title_kwargs,
+                                               # title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
         # title = r'Posterior Emission\nScaling Factors'
         fig_kwargs = {'figax' : [fig, ax[0,1]]}
         fig, ax[0,1], c = true.plot_comparison('xhat', self.xhat, cbar=False,
-                                                title='Posterior Emission\nScaling Factors',
+                                                title='Posterior\nScaling Factors',
                                                 xlabel='', ylabel='',
                                                fig_kwargs=fig_kwargs,
-                                               title_kwargs=title_kwargs,
+                                               # title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
         # title = r'Posterior Variance'
         fig_kwargs = {'figax' : [fig, ax[1,0]]}
-        fig, ax[1,0], c = true.plot_comparison('shat_diag', self.shat_diag,
+        true.sd = np.sqrt(true.shat_diag)
+        self.sd = np.sqrt(self.shat_diag)
+        fig, ax[1,0], c = true.plot_comparison('sd', self.sd,
                                                cbar=False,
-                                               title='Posterior Variance',
-                                               ylabel='Estimate',
+                                               title='Posterior Error\nStandard Deviations',
+                                               ylabel='Reduced Rank',
                                                fig_kwargs=fig_kwargs,
-                                               title_kwargs=title_kwargs,
+                                               # title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
 
         # title = r'Averaging Kernel\nSensitivities'
@@ -1280,7 +1307,7 @@ class ReducedRankJacobian(ReducedRankInversion):
                                                title='Averaging Kernel\nSensitivities',
                                                ylabel='',
                                                fig_kwargs=fig_kwargs,
-                                               title_kwargs=title_kwargs,
+                                               # title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
 
         cax = fp.add_cax(fig, ax)
