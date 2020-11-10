@@ -25,3 +25,17 @@ input/true_evecs.csv
 input/est0_evals.csv
 input/true_evals.csv
 input/edecomp.zip
+
+# Don't track scratch files
+python/scratch*
+
+# Don't track __pycache__/
+__pycache__
+*/__pycache__/
+
+# Don't track Adobe Illustrator files
+*/*.ai
+
+# Don't track paper files (this is being added so that the git repo
+# can be made public)
+paper/
