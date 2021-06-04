@@ -323,9 +323,12 @@ class Inversion:
 
         if cbar:
             cbar_title = cbar_kwargs.pop('title', '')
-            cax = fp.add_cax(fig, ax)
+            horizontal = cbar_kwargs.pop('horizontal', False)
+            if horizontal:
+                cbar_kwargs['orientation'] = 'horizontal'
+            cax = fp.add_cax(fig, ax, horizontal=horizontal)
             cb = fig.colorbar(c, ax=ax, cax=cax, **cbar_kwargs)
-            cb = fp.format_cbar(cb, cbar_title)
+            cb = fp.format_cbar(cb, cbar_title, horizontal=horizontal)
             return fig, ax, cb
         else:
             return fig, ax, c
@@ -475,9 +478,10 @@ class ReducedRankInversion(Inversion):
             rank = np.argwhere(diff == np.min(diff))[0][0]
             print('Calculated rank from percent of information: %d' % rank)
             print('     Percent of information: %.4f%%' % (100*pct_of_info))
-            print('     Signal-to-noise ratio: %.2f' % self.evals_h[rank])
+            print('     Signal-to-noise ratio: %.2f'
+                  % (self.evals_h[rank])**0.5)
         elif snr is not None:
-            diff = np.abs(self.evals_h - snr)
+            diff = np.abs(self.evals_h**0.5 - snr)
             rank = np.argwhere(diff == np.min(diff))[0][0]
             print('Calculated rank from signal-to-noise ratio : %d' % rank)
             print('     Percent of information: %.4f%%' % (100*frac[rank]))
@@ -485,7 +489,8 @@ class ReducedRankInversion(Inversion):
         elif rank is not None:
             print('Using defined rank: %d' % rank)
             print('     Percent of information: %.4f%%' % (100*frac[rank]))
-            print('     Signal-to-noise ratio: %.2f' % self.evals_h[rank])
+            print('     Signal-to-noise ratio: %.2f'
+                  % (self.evals_h[rank])**0.5)
         return rank
 
     def pph(self):
@@ -754,12 +759,12 @@ class ReducedRankInversion(Inversion):
         if stats:
             _, _, r = self.calc_stats(xdata, compare_data)
             if r**2 <= 0.99:
-                ax.text(0.05, 0.85,
+                ax.text(0.05, 0.875,
                         r'R = %.2f' % r,
                         fontsize=config.LABEL_FONTSIZE*config.SCALE,
                         transform=ax.transAxes)
             else:
-                ax.text(0.05, 0.85,
+                ax.text(0.05, 0.875,
                         r'R $>$ 0.99',
                         fontsize=config.LABEL_FONTSIZE*fp.SCALE,
                         transform=ax.transAxes)
@@ -984,16 +989,16 @@ class ReducedRankJacobian(ReducedRankInversion):
                 count += len(idx) - 1
                 i += 1
             print('%d cells disaggregated' % (i-1))
+            print('    All disaggregated cells had a DOFS increase >= %.2f' % (dofs_diff[sig_idx[i-1]-1]))
             added_model_runs = count
             # now renumber
 
-        # if we're at the point of disaggregating cells
-        # take the largest sig_idx[1]
-        # set all indices equal to new, unique values
-        # count the number of new indices
-        # while less than n_cells, continue
+        # Print informationo abouut state vector
+        ux, ux_cnt = np.unique(new_sv, return_counts=True)
+        summ, summ_cnt = np.unique(ux_cnt, return_counts=True)
         print('Number of state vector elements: %d' \
-              % len(np.unique(new_sv)))
+              % len(ux))
+        print(summ, summ_cnt)
         print('... Complete ...\n')
 
         return new_sv, added_model_runs
@@ -1034,13 +1039,14 @@ class ReducedRankJacobian(ReducedRankInversion):
     def calculate_prior_ms(self, xa_abs, sa_vec):
         xa_abs_ms = pd.DataFrame(xa_abs).groupby(self.state_vector).sum()
 
-        sa_vec_abs = pd.DataFrame(sa_vec*xa_abs)
-        sa_vec_abs_ms = (sa_vec_abs**2).groupby(self.state_vector).sum()**0.5
-        sa_vec_ms = sa_vec_abs_ms/xa_abs_ms
+        # sa_vec_abs = pd.DataFrame(sa_vec*xa_abs)
+        # sa_vec_abs_ms = (sa_vec_abs**2).groupby(self.state_vector).sum()**0.5
+        # sa_vec_ms = sa_vec_abs_ms/xa_abs_ms
 
         self.xa_abs = np.array(xa_abs_ms).reshape(-1,)
         self.xa = np.ones(self.nstate).reshape(-1,)
-        self.sa_vec = np.array(sa_vec_ms).reshape(-1,)
+        self.sa_vec = 0.25*np.ones(self.nstate).reshape(-1,)
+        #np.array(sa_vec_ms).reshape(-1,)
 
     def calculate_trans_ms(self, nstate_native):
         gamma = np.zeros((self.nstate, nstate_native))
@@ -1162,10 +1168,12 @@ class ReducedRankJacobian(ReducedRankInversion):
         # an unphysical value so that we can check for errors)
         new.xhat_long = np.ones(len(new.state_vector))
         new.dofs_long = np.zeros(len(new.state_vector))
+        new.shat_err_long = np.zeros(len(new.state_vector))
         for i in range(1, new.nstate + 1):
             idx = np.where(new.state_vector == i)[0]
             new.xhat_long[idx] = new.xhat[i - 1]
             new.dofs_long[idx] = new.dofs[i - 1]
+            new.shat_err_long[idx] = (new.shat[i-1, i-1])**0.5
 
         print('NUMBER OF MODEL RUNS : %d' % new.model_runs)
 

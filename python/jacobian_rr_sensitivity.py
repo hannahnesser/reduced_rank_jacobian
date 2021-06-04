@@ -75,7 +75,8 @@ k_true = xr.open_dataarray(join(inputs, 'k_true.nc'))
 # Load prior and error
 xa = xr.open_dataarray(join(inputs, 'xa.nc'))
 xa_abs = xr.open_dataarray(join(inputs, 'xa_abs.nc'))
-sa_vec = xr.open_dataarray(join(inputs, 'sa_vec.nc'))
+# sa_vec = xr.open_dataarray(join(inputs, 'sa_vec.nc'))
+sa_vec = 0.25*np.ones(xa.shape[0])
 
 # Load observations and error
 y = xr.open_dataarray(join(inputs, 'y.nc'))
@@ -98,7 +99,7 @@ obs = obs.rename(columns={'LON' : 'lon',
 ### SET CONSTANTS ###
 #####################
 
-RF = 20
+RF = 5
 
 ############
 ### TRUE ###
@@ -106,8 +107,8 @@ RF = 20
 
 # Create a true Reduced Rank Jacobian object
 true = inv.ReducedRankJacobian(k_true.values,
-                               xa.values,
-                               sa_vec.values,
+                                xa.values,
+                               sa_vec,
                                y.values,
                                y_base.values,
                                so_vec.values)
@@ -129,7 +130,7 @@ true.solve_inversion()
 
 est0 = inv.ReducedRankJacobian(k_est.values,
                                xa.values,
-                               sa_vec.values,
+                               sa_vec,
                                y.values,
                                y_base.values,
                                so_vec.values)

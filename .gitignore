@@ -2,6 +2,7 @@
 archive/
 20191007/
 plots*/
+presentation_plots/
 
 # Don't track .DS_Store
 */.DS_Store
