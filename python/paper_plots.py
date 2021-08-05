@@ -57,6 +57,8 @@ magma_trans = fp.cmap_trans('magma')
 # Small (i.e. non-default) figure settings
 small_fig_kwargs = {'max_width' : 3.25,
                     'max_height' : 3}
+small_fig_kwargs_b = {'max_width' : 3,
+                      'max_height' : 2.75}
 small_map_kwargs = {'draw_labels' : False}
 
 ######################
@@ -503,14 +505,15 @@ def mr2n(model_runs,
 
 # R2 plot
 # fig4, ax = fp.get_figax()
-figsize = fp.get_figsize(aspect=0.665, rows=1, cols=1)
+figsize = fp.get_figsize(aspect=0.665, rows=1, cols=1,
+                         **{'max_width' : 2.5, 'max_height' : 3.75})
 fig4, ax = plt.subplots(2, 1,
                          figsize=figsize,
                          gridspec_kw={'height_ratios': [1, 4]})
-plt.subplots_adjust(hspace=0.4)
+plt.subplots_adjust(hspace=0.6)
 cax = fp.add_cax(fig4, ax[1])
 # ax = fp.add_title(ax, r'Posterior Emissions r$^2$'))
-ax[0] = fp.add_title(ax[0], 'Reduced Rank DOFS', pad=config.TITLE_PAD*2)
+ax[0] = fp.add_title(ax[0], 'Reduced-rank DOFS', pad=config.TITLE_PAD*2)
 # ax = fp.add_title(ax, 'Number of Constrained Grid Cells')
 
 # Plot DOFS contours (shaded)
@@ -557,7 +560,7 @@ ax[0].set_xlim(0, 1000)
 ax[0].set_ylim(50, true.dofs.sum())
 ax[0].set_facecolor('0.98')
 ax[0] = fp.add_labels(ax[0],
-                       xlabel='Total Model Runs',
+                       xlabel='Total model runs',
                        ylabel='Optimal\nDOFS',
                        labelpad=config.LABEL_PAD/2)
 
@@ -611,8 +614,8 @@ cbar = fp.format_cbar(cbar, 'DOFS')
 
 # Axis and tick labels
 ax[1] = fp.add_labels(ax[1],
-                      'First Update Model Runs',
-                      'Second Update Model Runs',
+                      'First update model runs',
+                      'Second update model runs',
                       labelpad=config.LABEL_PAD/2)
 
 # ....This is still hard coded

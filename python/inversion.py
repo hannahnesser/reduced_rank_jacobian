@@ -786,10 +786,10 @@ class ReducedRankInversion(Inversion):
         xdata = getattr(self, attribute)
 
         # Get other plot labels
-        xlabel = kw.pop('xlabel', 'Native Resolution')
+        xlabel = kw.pop('xlabel', 'Native resolution')
         ylabel = kw.pop('ylabel', 'Estimate')
         label_kwargs = kw.pop('label_kwargs', {})
-        title = kw.pop('title', 'Estimated vs. Native Resolution ' + attribute)
+        title = kw.pop('title', 'Estimated vs. native resolution ' + attribute)
         title_kwargs = kw.pop('title_kwargs', {})
 
         if type(compare_data) == dict:
@@ -1277,22 +1277,22 @@ class ReducedRankJacobian(ReducedRankInversion):
         #                 'y' : 1.05}
         label_kwargs = {'labelpad' : config.LABEL_PAD/2}
 
-        fig, ax = fp.get_figax(rows=2, cols=2)
+        fig, ax = fp.get_figax(rows=2, cols=2, max_height=4.75)
 
         # Jacobian
         # title = r'Jacobian Matrix\nElements',
         fig_kwargs = {'figax' : [fig, ax[0,0]]}
         fig, ax[0,0], c = true.plot_comparison('k', self.k, cbar=False,
-                                               title='Jacobian Matrix\nElements',
+                                               title='Jacobian matrix\nelements',
                                                xlabel='',
-                                               ylabel='Reduced Rank',
+                                               ylabel='Reduced rank',
                                                fig_kwargs=fig_kwargs,
                                                # title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
         # title = r'Posterior Emission\nScaling Factors'
         fig_kwargs = {'figax' : [fig, ax[0,1]]}
         fig, ax[0,1], c = true.plot_comparison('xhat', self.xhat, cbar=False,
-                                                title='Posterior\nScaling Factors',
+                                                title='Posterior\nscaling factors',
                                                 xlabel='', ylabel='',
                                                fig_kwargs=fig_kwargs,
                                                # title_kwargs=title_kwargs,
@@ -1303,8 +1303,8 @@ class ReducedRankJacobian(ReducedRankInversion):
         self.sd = np.sqrt(self.shat_diag)
         fig, ax[1,0], c = true.plot_comparison('sd', self.sd,
                                                cbar=False,
-                                               title='Posterior Error\nStandard Deviations',
-                                               ylabel='Reduced Rank',
+                                               title='Posterior error\nstandard deviations',
+                                               ylabel='Reduced rank',
                                                fig_kwargs=fig_kwargs,
                                                # title_kwargs=title_kwargs,
                                                label_kwargs=label_kwargs)
@@ -1312,7 +1312,7 @@ class ReducedRankJacobian(ReducedRankInversion):
         # title = r'Averaging Kernel\nSensitivities'
         fig_kwargs={'figax' : [fig, ax[1,1]]}
         fig, ax[1,1], c = true.plot_comparison('dofs', self.dofs, cbar=False,
-                                               title='Averaging Kernel\nSensitivities',
+                                               title='Averaging kernel\nsensitivities',
                                                ylabel='',
                                                fig_kwargs=fig_kwargs,
                                                # title_kwargs=title_kwargs,
@@ -1322,7 +1322,7 @@ class ReducedRankJacobian(ReducedRankInversion):
         cbar = fig.colorbar(c, cax=cax)
         cbar = fp.format_cbar(cbar, **{'cbar_title' : 'Count'})
 
-        plt.subplots_adjust(hspace=0.5)
+        plt.subplots_adjust(hspace=0.7)
 
         return fig, ax
 
