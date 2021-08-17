@@ -68,8 +68,8 @@ clusters = xr.open_dataarray(join(inputs, 'clusters_1x125.nc'))
 clusters_plot = xr.open_dataarray(join(inputs, 'clusters_1x125_plot.nc'))
 
 # Load estimated and true Jacobian
-k_est = xr.open_dataarray(join(inputs, 'k_est.nc'))
-k_est_sparse = xr.open_dataarray(join(inputs, 'k_est_sparse.nc'))
+k_est = xr.open_dataarray(join(inputs, 'k_est_R04.nc'))
+k_est_sparse = xr.open_dataarray(join(inputs, 'k_est_sparse_R04.nc'))
 k_true = xr.open_dataarray(join(inputs, 'k_true.nc'))
 
 # Load prior and error
@@ -144,12 +144,12 @@ est0.solve_inversion()
 #######################################
 
 # DON'T RERUN UNLESS ABSOLUTELY NECESSARY
-n = 41
+n = 21
 r2_summ = np.zeros((n, n))
 nc_summ = np.zeros((n, n))
 nm_summ = np.zeros((n, n))
 dofs_summ = np.zeros((n, n))
-indices = np.concatenate(([1], np.arange(25, 1025, 25)))
+indices = np.concatenate(([1], np.arange(50, 1050, 50)))
 for col, first_update in enumerate(indices):
     for row, second_update in enumerate(indices):
         test1 = est0.update_jacobian(true.k, rank=first_update)
@@ -163,7 +163,7 @@ for col, first_update in enumerate(indices):
         nm_summ[row, col] = test2_f.model_runs
         dofs_summ[row, col] = np.trace(test2.a)
 
-np.save(join(inputs, 'r2_summary'), r2_summ)
-np.save(join(inputs, 'nc_summary'), nc_summ)
-np.save(join(inputs, 'nm_summary'), nm_summ)
-np.save(join(inputs, 'dofs_summary'), dofs_summ)
+np.save(join(inputs, 'r2_summary_R04'), r2_summ)
+np.save(join(inputs, 'nc_summary_R04'), nc_summ)
+np.save(join(inputs, 'nm_summary_R04'), nm_summ)
+np.save(join(inputs, 'dofs_summary_R04'), dofs_summ)

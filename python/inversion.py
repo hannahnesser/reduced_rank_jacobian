@@ -657,13 +657,13 @@ class ReducedRankInversion(Inversion):
         label = kw.pop('label', '')
         color = kw.pop('color', plt.cm.get_cmap('inferno')(5))
         ls = kw.pop('ls', '-')
-        lw = kw.pop('lw', 3)
+        lw = kw.pop('lw', 2)
         text = kw.pop('text', True)
         if kw:
             raise TypeError('Unexpected kwargs provided: %s' % list(kw.keys()))
 
         frac = np.cumsum(self.evals_q/self.evals_q.sum())
-        snr_idx = np.argwhere(self.evals_q >= 0.5)[-1][0]
+        snr_idx = self.get_rank(snr=1)
         ax.plot(frac, label=label, c=color, ls=ls, lw=lw)
 
         if text:

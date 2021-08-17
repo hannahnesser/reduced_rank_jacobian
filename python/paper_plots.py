@@ -78,8 +78,8 @@ clusters = xr.open_dataarray(join(inputs, 'clusters_1x125.nc'))
 clusters_plot = xr.open_dataarray(join(inputs, 'clusters_1x125_plot.nc'))
 
 # Estimated, true, and reduced-dimension Jacobian
-k_est = xr.open_dataarray(join(inputs, 'k_est.nc'))
-k_est_sparse = xr.open_dataarray(join(inputs, 'k_est_sparse.nc'))
+k_est = xr.open_dataarray(join(inputs, 'k_est_R04.nc'))
+k_est_sparse = xr.open_dataarray(join(inputs, 'k_est_sparse_R04.nc'))
 k_true = xr.open_dataarray(join(inputs, 'k_true.nc'))
 k_rd = pd.read_csv(join(inputs, 'k_rd.csv'), header=None).to_numpy()
 
@@ -181,7 +181,7 @@ print(est_rd.dofs.sum())
 # nm = 524
 
 # First set of updates
-est1 = est0.update_jacobian(true.k, snr=1.25)
+est1 = est0.update_jacobian(true.k, snr=1.75)
 
 # Second set
 est2 = est1.update_jacobian(true.k, rank=est0.get_rank(pct_of_info=0.97))
@@ -190,11 +190,11 @@ est2 = est1.update_jacobian(true.k, rank=est0.get_rank(pct_of_info=0.97))
 est2.model_runs += 1
 
 # second set
-est1a = est0.update_jacobian(true.k, snr=0.75)
+est1a = est0.update_jacobian(true.k, snr=0.9)
 est2a = est1a.update_jacobian(true.k, rank=est2.model_runs-est1a.model_runs)
 
 # third set
-est1b = est0.update_jacobian(true.k, snr=1.75)
+est1b = est0.update_jacobian(true.k, snr=1.9)
 est2b = est1b.update_jacobian(true.k, rank=est2.model_runs-est1b.model_runs)
 
 # Filter
@@ -219,10 +219,18 @@ print('\n')
 ###############################################
 
 # Open summary files
-r2_summ = np.load(join(inputs, 'r2_summary.npy'))
-nc_summ = np.load(join(inputs, 'nc_summary.npy'))
-nm_summ = np.load(join(inputs, 'nm_summary.npy'))
-dofs_summ = np.load(join(inputs, 'dofs_summary.npy'))
+r2_summ = np.load(join(inputs, 'r2_summary_R04.npy'))
+nc_summ = np.load(join(inputs, 'nc_summary_R04.npy'))
+nm_summ = np.load(join(inputs, 'nm_summary_R04.npy'))
+dofs_summ = np.load(join(inputs, 'dofs_summary_R04.npy'))
+
+#####################################
+### FIGURE 0: EIGENVALUE SPECTRUM ###
+#####################################
+fig0a, ax = true.plot_info_frac()
+fig0b, ax = est0.plot_info_frac(ls='--')
+# fp.save_fig(fig0a, loc=plots, name='fig0a_true_info_spec_R04')
+fp.save_fig(fig0b, loc=plots, name='fig0b_est0_info_spec_R04')
 
 ###############################################
 ### FIGURE 1: RANK AND DIMENSION FLOW CHART ###
@@ -319,7 +327,7 @@ fig2a, ax, c = true.plot_state('dofs', clusters_plot, title=title,
 ax.text(0.025, 0.05, 'DOFS = %d' % round(np.trace(true.a)),
         fontsize=config.LABEL_FONTSIZE*config.SCALE,
         transform=ax.transAxes)
-fp.save_fig(fig2a, plots, 'fig2a_true_averaging_kernel')
+fp.save_fig(fig2a, plots, 'fig2a_true_averaging_kernel_R04')
 
 # Initial estimate averaging kernel
 title = 'Initial estimate averaging\nkernel sensitivities'
@@ -330,7 +338,7 @@ fig2b, ax, c = est0.plot_state('dofs', clusters_plot, title=title,
 ax.text(0.025, 0.05, 'DOFS = %d' % round(np.trace(est0.a)),
         fontsize=config.LABEL_FONTSIZE*config.SCALE,
         transform=ax.transAxes)
-fp.save_fig(fig2b, plots, 'fig2b_est0_averaging_kernel')
+fp.save_fig(fig2b, plots, 'fig2b_est0_averaging_kernel_R04')
 
 # Prior error
 true.sd_vec = true.sa_vec**0.5
@@ -343,7 +351,7 @@ fig2c, ax, c = true.plot_state('sd_vec_abs', clusters_plot,
                                 fig_kwargs=small_fig_kwargs,
                                 cbar_kwargs=cbar_kwargs,
                                 map_kwargs=small_map_kwargs)
-fp.save_fig(fig2c, plots, 'fig2c_prior_error')
+fp.save_fig(fig2c, plots, 'fig2c_prior_error_R04')
 
 # Observational density
 lat_res = np.diff(clusters_plot.lat)[0]
@@ -375,7 +383,7 @@ fig2d, ax, c = true.plot_state_format(obs_density, title=title,
                                        fig_kwargs=small_fig_kwargs,
                                        cbar_kwargs=cbar_kwargs,
                                        map_kwargs=small_map_kwargs)
-fp.save_fig(fig2d, plots, 'fig2d_gosat_obs_density')
+fp.save_fig(fig2d, plots, 'fig2d_gosat_obs_density_R04')
 
 ##############################################
 ### FIGURE 3 : CONSOLIDATED POSTERIOR PLOT ###
@@ -454,7 +462,7 @@ ax3a[0].text(-0.3, 0.5, 'Posterior\nscaling\nfactors',
               rotation=90, ha='center', va='center',
               transform=ax3a[0].transAxes)
 # Save
-fp.save_fig(fig3a, plots, 'fig3a_posterior_mean_summary')
+fp.save_fig(fig3a, plots, 'fig3a_posterior_mean_summary_R04')
 
 # Polishing averaging kernel sensitivities
 # Colorbar
@@ -468,7 +476,7 @@ ax3b[0].text(-0.3, 0.5, 'Averaging\nkernel\nsensitivities',
               rotation=90, ha='center', va='center',
               transform=ax3b[0].transAxes)
 # Save
-fp.save_fig(fig3b, plots, 'fig3b_averaging_kernel_summary')
+fp.save_fig(fig3b, plots, 'fig3b_averaging_kernel_summary_R04')
 
 # # Polishing posterior error
 # # Colorbar
@@ -490,7 +498,7 @@ fp.save_fig(fig3b, plots, 'fig3b_averaging_kernel_summary')
 
 min_mr = 0
 max_mr = 1000
-increment = 25
+increment = 50
 n = int((max_mr - min_mr)/increment) + 1
 
 def mr2n(model_runs,
@@ -619,18 +627,18 @@ ax[1] = fp.add_labels(ax[1],
                       labelpad=config.LABEL_PAD/2)
 
 # ....This is still hard coded
-ax[1].set_xticks(np.arange(4, n, (n-4)/9))
+ax[1].set_xticks(np.arange(2, n, (n-2)/9))
 ax[1].set_xticklabels(np.arange(100, 1100, 100),
                       fontsize=config.TICK_FONTSIZE*config.SCALE)
 ax[1].set_xlim(0, (n-1)*750/975)
 
-ax[1].set_yticks(np.arange(4, n, (n-4)/9))
+ax[1].set_yticks(np.arange(2, n, (n-2)/9))
 ax[1].set_yticklabels(np.arange(100, 1100, 100),
                       fontsize=config.TICK_FONTSIZE*config.SCALE)
 ax[1].set_ylim(0, (n-1)*750/975)
 ax[1].set_aspect('equal')
 
-fp.save_fig(fig4, plots, 'fig4_dofs_comparison')
+fp.save_fig(fig4, plots, 'fig4_dofs_comparison_R04')
 
 ############################################################
 ### FIGURE 5: EST2_F POSTERIOR COMPARSION SCATTER PLOTS ###
@@ -650,5 +658,5 @@ ax[2].set_yticks([0.2, 0.4])
 ax[3].set_xticks([0, 0.5, 1])
 ax[3].set_yticks([0, 0.5, 1])
 
-fp.save_fig(fig5, plots, 'fig5_posterior_scattter_comparison')
+fp.save_fig(fig5, plots, 'fig5_posterior_scattter_comparison_R04')
 

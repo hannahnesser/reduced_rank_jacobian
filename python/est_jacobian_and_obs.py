@@ -13,12 +13,17 @@ rcParams['font.sans-serif'] = 'Arial'
 rcParams['font.size'] = 14
 colors = plt.cm.get_cmap('inferno', lut=9)
 
+input_dir = '../input'
+jac_str = 'k'
+resolution = '1x125'
+model_emissions = 'base_emis.nc'
+sat_obs = 'sat_obs.gosat.00.m'
 
-input_dir = sys.argv[1]
-jac_str = str(sys.argv[2])
-resolution = str(sys.argv[3])
-model_emissions = sys.argv[4]
-sat_obs = sys.argv[5]
+# input_dir = sys.argv[1]
+# jac_str = str(sys.argv[2])
+# resolution = str(sys.argv[3])
+# model_emissions = sys.argv[4]
+# sat_obs = sys.argv[5]
 
 def get_delta_emis(clusters_long, emis_loc=None, relative=False):
     if (emis_loc is not None) & (~relative):
@@ -46,8 +51,25 @@ def get_delta_emis(clusters_long, emis_loc=None, relative=False):
 
     return delta_emis
 
-if not set([jac_str + '_est.nc',
-            jac_str + '_est_sparse.nc',
+def get_emis(emis_loc):
+    emis = xr.open_dataset(emis_loc)
+
+    # Take only the first level
+    emis = emis.where(emis.lev == emis.lev.min(), drop=True)
+    emis = emis.drop(['time', 'lev', 'hyam', 'hybm', 'P0'])
+    emis = emis.squeeze(['time', 'lev'])
+
+    # Find total emissions, not considering soil absorption
+    emis['EmisCH4_Total'] = emis['EmisCH4_Total'] - emis['EmisCH4_SoilAbsorb']
+
+    # Units are originally in kg/m2/s. Change it to Tg/month.
+    emis['EmisCH4_Total'] = emis['EmisCH4_Total']*emis['AREA']*(60*60*24*31)/1e9
+    emis = emis['EmisCH4_Total']
+
+    return emis
+
+if not set([jac_str + '_est_R04.nc',
+            jac_str + '_est_sparse_R04.nc',
             'y.nc', 'y_base.nc', 'so_vec.nc']).issubset(listdir(input_dir)):
     print('Retrieving observational data and estimated Jacobian.')
 
@@ -107,8 +129,8 @@ if not set([jac_str + '_est.nc',
     y['model'].to_netcdf(join(input_dir, 'y_base.nc'))
     y['GOSAT'].to_netcdf(join(input_dir, 'y.nc'))
 
-    if (('k_est.nc' not in listdir(input_dir))
-        or ('k_est_sparse.nc' not in listdir(input_dir))):
+    if (('k_est_R04.nc' not in listdir(input_dir))
+        or ('k_est_sparse_R04.nc' not in listdir(input_dir))):
         print('Building estimated Jacobian based on mass balance approach.')
         # # Calculate the change above each grid cell
         # get moles air
@@ -170,6 +192,9 @@ if not set([jac_str + '_est.nc',
             pert = emis_pert.where(emis_pert.coords['NSV'] == i)
             pert_loc = emis_pert.where(emis_pert.coords['NSV'] == i, drop=True)
 
+            cond6 = condition(pert, pert_loc, resolution, 6)
+            cond5 = condition(pert, pert_loc, resolution, 5)
+            cond4 = condition(pert, pert_loc, resolution, 4)
             cond3 = condition(pert, pert_loc, resolution, 3)
             cond2 = condition(pert, pert_loc, resolution, 2)
             cond1 = condition(pert, pert_loc, resolution, 1)
@@ -177,28 +202,45 @@ if not set([jac_str + '_est.nc',
 
             # We apply cond1 second, so we need it to be the same shape
             # as our perturbation realm.
-            cond2 = cond2.where(cond3, drop=True).astype(bool)
-            cond1 = cond1.where(cond3, drop=True).astype(bool)
-            cond0 = cond0.where(cond3, drop=True).astype(bool)
+            cond5 = cond5.where(cond6, drop=True).astype(bool)
+            cond4 = cond4.where(cond6, drop=True).astype(bool)
+            cond3 = cond3.where(cond6, drop=True).astype(bool)
+            cond2 = cond2.where(cond6, drop=True).astype(bool)
+            cond1 = cond1.where(cond6, drop=True).astype(bool)
+            cond0 = cond0.where(cond6, drop=True).astype(bool)
 
-            pert_nb = emis_pert.where(cond3, drop=True)
+            pert_nb = emis_pert.where(cond6, drop=True)
 
             # Set the outer ring
             # we use 10% of the emissions (0.1) distributed over the number of
             # outer ring grid boxes (cond3.sum()-cond2.sum())
-            pert_nb['EmisCH4_Total'] *= 0.1/(cond3.sum()-cond2.sum())*pert_loc['EmisCH4_Total'].values[0]/pert_nb['EmisCH4_Total']
+            pert_nb['EmisCH4_Total'] *= 0.015625/(cond6.sum()-cond5.sum())*pert_loc['EmisCH4_Total'].values[0]/pert_nb['EmisCH4_Total']
+            ## EDITED ABOVE THIS
 
             # Set the next ring
+            pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond5,
+                                                                      0.015625/(cond5.sum()-cond4.sum())*pert_loc['EmisCH4_Total'].values[0])
+
+            # Set the next ring
+            pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond4,
+                                                                      0.03125/(cond4.sum()-cond3.sum())*pert_loc['EmisCH4_Total'].values[0])
+
+            # And the next
+            pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond3,
+                                                                      0.0625/(cond3.sum()-cond2.sum())*pert_loc['EmisCH4_Total'].values[0])
+
+            # And the next
             pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond2,
-                                                                      0.2/(cond2.sum()-cond1.sum())*pert_loc['EmisCH4_Total'].values[0])
+                                                                      0.125/(cond2.sum()-cond1.sum())*pert_loc['EmisCH4_Total'].values[0])
 
             # And the next
             pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond1,
-                                                                      0.3/(cond1.sum()-cond0.sum())*pert_loc['EmisCH4_Total'].values[0])
+                                                                      0.25/(cond1.sum()-cond0.sum())*pert_loc['EmisCH4_Total'].values[0])
 
             # and the inner ring
             pert_nb['EmisCH4_Total'] = pert_nb['EmisCH4_Total'].where(~cond0,
-                                                                      0.4*pert_loc['EmisCH4_Total'].values[0])
+                                                                      0.5*pert_loc['EmisCH4_Total'].values[0])
+
 
             W = pert_nb['AREA']**0.5 # m
             pert_nb[i] = 1e9*Mair*pert_nb['EmisCH4_Total']*g/(U*W*P)
@@ -223,7 +265,7 @@ if not set([jac_str + '_est.nc',
                                        0 : 'k'})
         k_est = k_est.set_index(['Nobs', 'NSV']).to_xarray()
         k_est = k_est['k']
-        k_est.to_netcdf(join(input_dir, jac_str + '_est.nc'))
+        k_est.to_netcdf(join(input_dir, jac_str + '_est_R04.nc'))
 
         k_est_sparse = y_short_sparse.drop(columns=['NSV'])/0.5
         k_est_sparse = k_est_sparse.set_index('Nobs')
@@ -232,22 +274,22 @@ if not set([jac_str + '_est.nc',
                                        0 : 'k'})
         k_est_sparse = k_est_sparse.set_index(['Nobs', 'NSV']).to_xarray()
         k_est_sparse = k_est_sparse['k']
-        k_est_sparse.to_netcdf(join(input_dir, jac_str + '_est_sparse.nc'))
+        k_est_sparse.to_netcdf(join(input_dir, jac_str + '_est_sparse_R04.nc'))
 
-        # We can check our results by plotting the regridded Jacobian against
-        # the true jacobian
-        k_true = xr.open_dataarray(join(input_dir, 'k_true.nc'))
-        fig, ax = plt.subplots(figsize=(10,10))
-        ax.set_facecolor('0.98')
-        ax.scatter(k_true.values, k_est.values, alpha=0.5, s=5, c=np.asarray(colors(3)).reshape(1,-1))
-        ax.plot((-2,20), (-2,20), c='0.5', lw=2, ls=':', zorder=0)
-        ax.set_ylim(-2,20)
-        ax.set_xlim(-2,20)
-        ax.set_xlabel('True Jacobian', fontsize=18)
-        ax.set_ylabel('Estimated Jacobian', fontsize=18)
-        ax.set_title('Estimated vs. True Jacobian', fontsize=20)
-        plt.tick_params(axis='both', which='major', labelsize=16)
-        plt.savefig(join(input_dir, 'k_est.png'))
+        # # We can check our results by plotting the regridded Jacobian against
+        # # the true jacobian
+        # k_true = xr.open_dataarray(join(input_dir, 'k_true.nc'))
+        # fig, ax = plt.subplots(figsize=(10,10))
+        # ax.set_facecolor('0.98')
+        # ax.scatter(k_true.values, k_est.values, alpha=0.5, s=5, c=np.asarray(colors(3)).reshape(1,-1))
+        # ax.plot((-2,20), (-2,20), c='0.5', lw=2, ls=':', zorder=0)
+        # ax.set_ylim(-2,20)
+        # ax.set_xlim(-2,20)
+        # ax.set_xlabel('True Jacobian', fontsize=18)
+        # ax.set_ylabel('Estimated Jacobian', fontsize=18)
+        # ax.set_title('Estimated vs. True Jacobian', fontsize=20)
+        # plt.tick_params(axis='both', which='major', labelsize=16)
+        # plt.savefig(join(input_dir, 'k_est_R04.png'))
 
 else:
     print('Estimated Jacobian and observational fields already exist.')
